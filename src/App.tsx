@@ -7,9 +7,9 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { AuthPage } from "@/components/auth/AuthPage";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import BookmarksPage from "./pages/BookmarksPage";
-import EditorDashboard from "./pages/EditorDashboard";
-import AdminDashboard from "./pages/AdminDashboard";
+import ViewerPage from "./pages/ViewerPage";
+import EditorPage from "./pages/EditorPage";
+import AdminPage from "./pages/AdminPage";
 
 const queryClient = new QueryClient();
 
@@ -22,10 +22,10 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/viewer" element={<ViewerPage />} />
+            <Route path="/editor" element={<EditorPage />} />
+            <Route path="/admin" element={<AdminPage />} />
             <Route path="/auth" element={<AuthPage />} />
-            <Route path="/bookmarks" element={<BookmarksPage />} />
-            <Route path="/editor" element={<EditorDashboard />} />
-            <Route path="/admin" element={<AdminDashboard />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
