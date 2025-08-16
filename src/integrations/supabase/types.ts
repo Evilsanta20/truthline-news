@@ -14,14 +14,43 @@ export type Database = {
   }
   public: {
     Tables: {
+      article_interactions: {
+        Row: {
+          article_id: string
+          created_at: string
+          id: string
+          interaction_type: string
+          interaction_value: number | null
+          user_id: string
+        }
+        Insert: {
+          article_id: string
+          created_at?: string
+          id?: string
+          interaction_type: string
+          interaction_value?: number | null
+          user_id?: string
+        }
+        Update: {
+          article_id?: string
+          created_at?: string
+          id?: string
+          interaction_type?: string
+          interaction_value?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       articles: {
         Row: {
           author: string | null
           category_id: string | null
           content: string | null
+          content_embedding: string | null
           created_at: string
           created_by: string | null
           description: string | null
+          engagement_score: number | null
           id: string
           is_editors_pick: boolean | null
           is_featured: boolean | null
@@ -30,6 +59,7 @@ export type Database = {
           source_id: string | null
           source_name: string | null
           title: string
+          topic_tags: string[] | null
           updated_at: string
           url: string
           url_to_image: string | null
@@ -39,9 +69,11 @@ export type Database = {
           author?: string | null
           category_id?: string | null
           content?: string | null
+          content_embedding?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
+          engagement_score?: number | null
           id?: string
           is_editors_pick?: boolean | null
           is_featured?: boolean | null
@@ -50,6 +82,7 @@ export type Database = {
           source_id?: string | null
           source_name?: string | null
           title: string
+          topic_tags?: string[] | null
           updated_at?: string
           url: string
           url_to_image?: string | null
@@ -59,9 +92,11 @@ export type Database = {
           author?: string | null
           category_id?: string | null
           content?: string | null
+          content_embedding?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
+          engagement_score?: number | null
           id?: string
           is_editors_pick?: boolean | null
           is_featured?: boolean | null
@@ -70,6 +105,7 @@ export type Database = {
           source_id?: string | null
           source_name?: string | null
           title?: string
+          topic_tags?: string[] | null
           updated_at?: string
           url?: string
           url_to_image?: string | null
@@ -273,6 +309,45 @@ export type Database = {
         }
         Relationships: []
       }
+      user_preferences: {
+        Row: {
+          blocked_sources: string[] | null
+          blocked_topics: string[] | null
+          created_at: string
+          id: string
+          interaction_scores: Json | null
+          preferred_sources: string[] | null
+          preferred_topics: string[] | null
+          reading_history: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          blocked_sources?: string[] | null
+          blocked_topics?: string[] | null
+          created_at?: string
+          id?: string
+          interaction_scores?: Json | null
+          preferred_sources?: string[] | null
+          preferred_topics?: string[] | null
+          reading_history?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          blocked_sources?: string[] | null
+          blocked_topics?: string[] | null
+          created_at?: string
+          id?: string
+          interaction_scores?: Json | null
+          preferred_sources?: string[] | null
+          preferred_topics?: string[] | null
+          reading_history?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -296,9 +371,29 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      binary_quantize: {
+        Args: { "": string } | { "": unknown }
+        Returns: unknown
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: string
+      }
+      halfvec_avg: {
+        Args: { "": number[] }
+        Returns: unknown
+      }
+      halfvec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      halfvec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      halfvec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
       }
       has_role: {
         Args: {
@@ -306,6 +401,78 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      hnsw_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_sparsevec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnswhandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflat_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflat_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflathandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      l2_norm: {
+        Args: { "": unknown } | { "": unknown }
+        Returns: number
+      }
+      l2_normalize: {
+        Args: { "": string } | { "": unknown } | { "": unknown }
+        Returns: unknown
+      }
+      sparsevec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      sparsevec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      sparsevec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
+      vector_avg: {
+        Args: { "": number[] }
+        Returns: string
+      }
+      vector_dims: {
+        Args: { "": string } | { "": unknown }
+        Returns: number
+      }
+      vector_norm: {
+        Args: { "": string }
+        Returns: number
+      }
+      vector_out: {
+        Args: { "": string }
+        Returns: unknown
+      }
+      vector_send: {
+        Args: { "": string }
+        Returns: string
+      }
+      vector_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
       }
     }
     Enums: {
