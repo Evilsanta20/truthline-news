@@ -78,26 +78,42 @@
 
 @layer components {
   .btn-news {
-    @apply bg-blue-600 hover:bg-blue-700 text-white border-0;
+    @apply bg-primary hover:bg-primary/90 text-primary-foreground border-0 transition-all duration-200;
   }
   
   .btn-accent {
-    @apply bg-red-600 hover:bg-red-700 text-white border-0;
+    @apply bg-accent hover:bg-accent/90 text-accent-foreground border-0 transition-all duration-200;
   }
   
-  .text-primary-blue {
-    @apply text-blue-600;
+  .news-card {
+    @apply bg-card border border-border rounded-lg hover:shadow-lg transition-all duration-200 hover:-translate-y-1;
   }
   
-  .text-accent-red {
-    @apply text-red-600;
+  .news-card-trending {
+    @apply bg-gradient-to-br from-accent/5 to-accent/10 border-accent/20 hover:border-accent/40;
   }
   
-  .border-primary-blue {
-    @apply border-blue-600;
+  .news-card-featured {
+    @apply bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20 hover:border-primary/40;
   }
   
-  .border-accent-red {
-    @apply border-red-600;
+  .category-pill {
+    @apply px-3 py-1 rounded-full text-sm font-medium transition-all duration-200 hover:scale-105;
+  }
+  
+  .sticky-header {
+    @apply sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border;
+  }
+  
+  .scroll-animation {
+    @apply animate-in fade-in-0 slide-in-from-bottom-4 duration-500;
+  }
+  
+  .hover-lift {
+    @apply transition-transform duration-200 hover:-translate-y-1;
+  }
+  
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent;
   }
 }
