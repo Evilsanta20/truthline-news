@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import EnhancedPersonalizedFeed from '@/components/news/EnhancedPersonalizedFeed'
+import ArticleReels from '@/components/news/ArticleReels'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -13,12 +14,16 @@ import {
   Search,
   Bell,
   Menu,
-  X
+  X,
+  Play,
+  Grid3X3,
+  List
 } from 'lucide-react'
 
 export default function ViewerPage() {
   const [userId, setUserId] = useState<string>('')
   const [activeSection, setActiveSection] = useState('home')
+  const [viewMode, setViewMode] = useState('feed' as 'feed' | 'reels')
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   useEffect(() => {
@@ -47,6 +52,11 @@ export default function ViewerPage() {
         </div>
       </div>
     )
+  }
+
+  // Render reels in full screen mode
+  if (viewMode !== 'feed') {
+    return <ArticleReels userId={userId} />
   }
 
   return (
@@ -90,6 +100,28 @@ export default function ViewerPage() {
 
             {/* Right Side Actions */}
             <div className="flex items-center space-x-4">
+              {/* View Mode Toggle */}
+              <div className="hidden md:flex items-center bg-secondary rounded-lg p-1">
+                <Button
+                  variant={viewMode === 'feed' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('feed')}
+                  className="h-8"
+                >
+                  <Grid3X3 className="w-4 h-4 mr-1" />
+                  Feed
+                </Button>
+                <Button
+                  variant={viewMode !== 'feed' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('reels')}
+                  className="h-8"
+                >
+                  <Play className="w-4 h-4 mr-1" />
+                  Reels
+                </Button>
+              </div>
+
               <Button variant="ghost" size="icon" className="relative hover-lift">
                 <Search className="w-5 h-5" />
               </Button>
@@ -154,6 +186,36 @@ export default function ViewerPage() {
                     </button>
                   )
                 })}
+                
+                {/* Mobile View Mode Toggle */}
+                <div className="pt-4 border-t border-border">
+                  <div className="flex space-x-2 mb-2">
+                    <Button
+                      variant={viewMode === 'feed' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => {
+                        setViewMode('feed')
+                        setIsMobileMenuOpen(false)
+                      }}
+                      className="flex-1"
+                    >
+                      <List className="w-4 h-4 mr-1" />
+                      Feed View
+                    </Button>
+                    <Button
+                      variant={viewMode !== 'feed' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => {
+                        setViewMode('reels')
+                        setIsMobileMenuOpen(false)
+                      }}
+                      className="flex-1"
+                    >
+                      <Play className="w-4 h-4 mr-1" />
+                      Reels View
+                    </Button>
+                  </div>
+                </div>
                 
                 <div className="pt-4 border-t border-border">
                   <div className="flex space-x-2">
