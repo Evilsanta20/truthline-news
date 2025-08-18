@@ -100,13 +100,28 @@ export default function ViewerPage() {
 
             {/* Right Side Actions */}
             <div className="flex items-center space-x-4">
-              {/* View Mode Toggle */}
-              <div className="hidden md:flex items-center bg-secondary rounded-lg p-1">
+              {/* Home Button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setViewMode('feed')
+                  setActiveSection('home')
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }}
+                className="hover-lift hidden sm:flex"
+              >
+                <Home className="w-4 h-4 mr-1" />
+                Home
+              </Button>
+              
+              {/* View Mode Toggle - Enhanced */}
+              <div className="hidden md:flex items-center bg-secondary rounded-lg p-1 border">
                 <Button
                   variant={viewMode === 'feed' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('feed')}
-                  className="h-8"
+                  className="h-8 transition-all"
                 >
                   <Grid3X3 className="w-4 h-4 mr-1" />
                   Feed
@@ -115,10 +130,13 @@ export default function ViewerPage() {
                   variant={viewMode !== 'feed' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('reels')}
-                  className="h-8"
+                  className="h-8 transition-all relative"
                 >
                   <Play className="w-4 h-4 mr-1" />
                   Reels
+                  <Badge variant="secondary" className="ml-1 h-4 px-1 text-xs">
+                    New
+                  </Badge>
                 </Button>
               </div>
 
@@ -241,6 +259,36 @@ export default function ViewerPage() {
             </div>
           )}
         </div>
+        
+        {/* Reels Feature Banner - Only show on feed view */}
+        {viewMode === 'feed' && (
+          <div className="bg-gradient-to-r from-primary/10 via-accent/10 to-secondary/10 border-b border-border">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <Play className="w-5 h-5 text-primary" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      🔥 Try the new Reels experience!
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Swipe through trending news in a TikTok-style format
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => setViewMode('reels')}
+                  variant="default"
+                  size="sm"
+                  className="shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <Play className="w-4 h-4 mr-2" />
+                  Try Reels
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Enhanced Personalized Feed */}

@@ -181,9 +181,14 @@ export default function PersonalizedFeed({ userId }: PersonalizedFeedProps) {
               {recommendations.length} articles tailored for you • Auto-refreshes every 5 minutes
             </p>
           </div>
-          <Button onClick={() => refreshRecommendations()} variant="outline" size="sm">
-            <Sparkles className="w-4 h-4 mr-2" />
-            Refresh Feed
+          <Button 
+            onClick={() => refreshRecommendations(true)} 
+            variant="outline" 
+            size="sm"
+            disabled={loading}
+          >
+            <Sparkles className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            {loading ? 'Refreshing...' : 'Refresh Feed'}
           </Button>
         </div>
 

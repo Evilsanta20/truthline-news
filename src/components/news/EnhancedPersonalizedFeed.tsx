@@ -251,10 +251,27 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
               {recommendations.length} articles tailored for you • Auto-refreshes every 5 minutes
             </p>
           </div>
-          <Button onClick={() => refreshRecommendations()} variant="outline" size="sm" className="hover-lift">
-            <Sparkles className="w-4 h-4 mr-2" />
-            Refresh Feed
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              onClick={() => refreshRecommendations(true)} 
+              variant="outline" 
+              size="sm" 
+              className="hover-lift"
+              disabled={loading}
+            >
+              <Sparkles className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              {loading ? 'Refreshing...' : 'Refresh Feed'}
+            </Button>
+            <Button
+              onClick={() => window.location.reload()}
+              variant="ghost"
+              size="sm"
+              className="hover-lift"
+            >
+              <Globe className="w-4 h-4 mr-1" />
+              Force Reload
+            </Button>
+          </div>
         </div>
 
         {/* Category Pills */}

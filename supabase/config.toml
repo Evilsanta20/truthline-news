@@ -59,6 +59,9 @@ verify_jwt = false
 [functions.ai-recommendations]
 verify_jwt = false
 
+[functions.enhanced-news-aggregator]
+verify_jwt = false
+
 [edge_runtime]
 policy = "per_function"
 inspector_port = 54330

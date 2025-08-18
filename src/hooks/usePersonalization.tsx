@@ -109,10 +109,28 @@ export const usePersonalization = (userId: string) => {
     }
   }, [userId])
 
-  // Get AI recommendations
-  const getRecommendations = useCallback(async (limit: number = 20) => {
+  // Get AI recommendations with enhanced news aggregation
+  const getRecommendations = useCallback(async (limit: number = 20, forceRefresh: boolean = false) => {
     try {
       setLoading(true)
+      
+      // First, refresh news from multiple sources if needed
+      if (forceRefresh) {
+        console.log('Refreshing news from multiple sources...')
+        
+        // Fetch from enhanced aggregator for different categories
+        const categories = ['politics', 'technology', 'business', 'health', 'sports', 'entertainment']
+        
+        for (const category of categories) {
+          try {
+            await supabase.functions.invoke('enhanced-news-aggregator', {
+              body: { category, limit: 10, refresh: true }
+            })
+          } catch (error) {
+            console.warn(`Failed to refresh ${category} news:`, error)
+          }
+        }
+      }
       
       const { data, error } = await supabase.functions.invoke('ai-recommendations', {
         body: { userId, limit }
@@ -120,6 +138,24 @@ export const usePersonalization = (userId: string) => {
 
       if (error) {
         console.error('Error getting recommendations:', error)
+        // Fallback to direct database query if AI function fails
+        const { data: fallbackArticles } = await supabase
+          .from('articles')
+          .select(`
+            *,
+            categories (name, slug, color)
+          `)
+          .order('created_at', { ascending: false })
+          .limit(limit)
+        
+        if (fallbackArticles) {
+          // Add missing recommendation_score for TypeScript compatibility
+          const articlesWithScore = fallbackArticles.map(article => ({
+            ...article,
+            recommendation_score: article.engagement_score || 50
+          }))
+          setRecommendations(articlesWithScore)
+        }
         return
       }
 
@@ -180,6 +216,6 @@ export const usePersonalization = (userId: string) => {
     loading,
     trackInteraction,
     updatePreferences,
-    refreshRecommendations: getRecommendations
+    refreshRecommendations: (forceRefresh?: boolean) => getRecommendations(20, forceRefresh || false)
   }
 }
