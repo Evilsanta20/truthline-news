@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Play, Sparkles, Home, TrendingUp, Bookmark, Globe, List, Video } from 'lucide-react'
+import { Play, Sparkles, Home, TrendingUp, Bookmark, Globe, List, Video, RotateCcw } from 'lucide-react'
 import { EnhancedPersonalizedFeed } from '@/components/news/EnhancedPersonalizedFeed'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -48,13 +48,23 @@ export default function Index() {
       <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-16 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <div className="flex items-center gap-3 mb-3 pt-3">
-              <img 
-                src="/lovable-uploads/e524adb8-0ef1-4971-84c5-016ea92d2d35.png" 
-                alt="AI News Digest Logo" 
-                className="w-7 h-7 object-contain"
-              />
-              <h2 className="text-lg font-semibold text-foreground">AI News Digest</h2>
+            <div className="flex items-center justify-between mb-3 pt-3">
+              <div className="flex items-center gap-3">
+                <img 
+                  src="/lovable-uploads/e524adb8-0ef1-4971-84c5-016ea92d2d35.png" 
+                  alt="AI News Digest Logo" 
+                  className="w-7 h-7 object-contain"
+                />
+                <h2 className="text-lg font-semibold text-foreground">AI News Digest</h2>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => window.location.reload()}
+                className="hover:bg-primary/10"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </Button>
             </div>
             <TabsList className="grid w-full grid-cols-7 h-12 bg-transparent border-0 rounded-none">
               <TabsTrigger 
