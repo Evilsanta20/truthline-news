@@ -7,22 +7,7 @@ import { EnhancedPersonalizedFeed } from '@/components/news/EnhancedPersonalized
 import { useAuth } from '@/hooks/useAuth'
 
 export default function Index() {
-  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('home')
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-foreground mb-4">Welcome to NewsDigest AI</h1>
-          <p className="text-muted-foreground mb-8">Please sign in to access your personalized news feed</p>
-          <Button onClick={() => window.location.href = '/auth'} className="btn-news">
-            Sign In to Continue
-          </Button>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -120,11 +105,11 @@ export default function Index() {
             </TabsList>
 
             <TabsContent value="personalized" className="mt-0 p-0">
-              <EnhancedPersonalizedFeed userId={user.id} />
+              <EnhancedPersonalizedFeed userId="demo-user" />
             </TabsContent>
 
             <TabsContent value="home" className="mt-0 p-0">
-              <EnhancedPersonalizedFeed userId={user.id} />
+              <EnhancedPersonalizedFeed userId="demo-user" />
             </TabsContent>
 
             <TabsContent value="trending" className="mt-0 p-0">
