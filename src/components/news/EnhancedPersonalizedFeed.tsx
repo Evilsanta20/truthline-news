@@ -33,6 +33,8 @@ interface EnhancedPersonalizedFeedProps {
   userId: string
 }
 
+export { EnhancedPersonalizedFeed }
+
 const CATEGORIES = [
   { slug: 'all', name: 'All Categories', color: '#3B82F6' },
   { slug: 'politics', name: 'Politics', color: '#DC2626' },
