@@ -34,6 +34,8 @@ export default function PersonalizedFeed({ userId }: PersonalizedFeedProps) {
   const [activeTab, setActiveTab] = useState('recommended')
   const [bookmarks, setBookmarks] = useState<Set<string>>(new Set())
   const [readingTimes, setReadingTimes] = useState<{[key: string]: number}>({})
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
+  const [nextRefresh, setNextRefresh] = useState<number>(300) // 5 minutes in seconds
   
   const {
     preferences,
@@ -52,6 +54,36 @@ export default function PersonalizedFeed({ userId }: PersonalizedFeedProps) {
       setBookmarks(new Set(JSON.parse(saved)))
     }
   }, [userId])
+
+  // Auto-refresh countdown timer
+  useEffect(() => {
+    const countdownInterval = setInterval(() => {
+      setNextRefresh(prev => {
+        if (prev <= 1) {
+          setLastRefresh(new Date())
+          return 300 // Reset to 5 minutes
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(countdownInterval)
+  }, [])
+
+  // Update last refresh when recommendations change
+  useEffect(() => {
+    if (recommendations.length > 0) {
+      setLastRefresh(new Date())
+      setNextRefresh(300)
+    }
+  }, [recommendations])
+
+  // Format countdown time
+  const formatCountdown = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
 
   // Track reading time for articles
   const startReadingTimer = (articleId: string) => {
@@ -178,18 +210,30 @@ export default function PersonalizedFeed({ userId }: PersonalizedFeedProps) {
               Your Personalized Feed
             </h1>
             <p className="text-muted-foreground mt-2">
-              {recommendations.length} articles tailored for you • Auto-refreshes every 5 minutes
+              {recommendations.length} articles tailored for you • Next refresh in {formatCountdown(nextRefresh)}
             </p>
           </div>
-          <Button 
-            onClick={() => refreshRecommendations(true)} 
-            variant="outline" 
-            size="sm"
-            disabled={loading}
-          >
-            <Sparkles className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            {loading ? 'Refreshing...' : 'Refresh Feed'}
-          </Button>
+          <div className="flex flex-col items-end gap-1">
+            <div className="text-xs text-muted-foreground">
+              Last updated: {lastRefresh.toLocaleTimeString()}
+            </div>
+            <Button 
+              onClick={() => {
+                refreshRecommendations(true)
+                setNextRefresh(300) // Reset countdown when manually refreshed
+                toast({
+                  title: "Feed refreshed",
+                  description: "Latest articles loaded successfully"
+                })
+              }} 
+              variant="outline" 
+              size="sm"
+              disabled={loading}
+            >
+              <Sparkles className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              {loading ? 'Refreshing...' : 'Refresh Now'}
+            </Button>
+          </div>
         </div>
 
         {/* Topic Preferences */}

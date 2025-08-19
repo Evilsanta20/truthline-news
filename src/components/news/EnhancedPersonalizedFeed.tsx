@@ -55,6 +55,8 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
+  const [nextRefresh, setNextRefresh] = useState<number>(300) // 5 minutes in seconds
   const loadMoreRef = useRef<HTMLDivElement>(null)
   
   const {
@@ -74,6 +76,36 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
       setBookmarks(new Set(JSON.parse(saved)))
     }
   }, [userId])
+
+  // Auto-refresh countdown timer
+  useEffect(() => {
+    const countdownInterval = setInterval(() => {
+      setNextRefresh(prev => {
+        if (prev <= 1) {
+          setLastRefresh(new Date())
+          return 300 // Reset to 5 minutes
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(countdownInterval)
+  }, [])
+
+  // Update last refresh when recommendations change
+  useEffect(() => {
+    if (recommendations.length > 0) {
+      setLastRefresh(new Date())
+      setNextRefresh(300)
+    }
+  }, [recommendations])
+
+  // Format countdown time
+  const formatCountdown = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
 
   // Infinite scroll observer
   useEffect(() => {
@@ -248,20 +280,32 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
             </h1>
             <p className="text-muted-foreground mt-2 flex items-center gap-2">
               <Globe className="w-4 h-4" />
-              {recommendations.length} articles tailored for you • Auto-refreshes every 5 minutes
+              {recommendations.length} articles tailored for you • Next refresh in {formatCountdown(nextRefresh)}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button 
-              onClick={() => refreshRecommendations(true)} 
-              variant="outline" 
-              size="sm" 
-              className="hover-lift"
-              disabled={loading}
-            >
-              <Sparkles className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              {loading ? 'Refreshing...' : 'Refresh Feed'}
-            </Button>
+            <div className="flex items-center gap-2">
+              <div className="text-xs text-muted-foreground">
+                Last updated: {lastRefresh.toLocaleTimeString()}
+              </div>
+              <Button 
+                onClick={() => {
+                  refreshRecommendations(true)
+                  setNextRefresh(300) // Reset countdown when manually refreshed
+                  toast({
+                    title: "Feed refreshed",
+                    description: "Latest articles loaded successfully"
+                  })
+                }} 
+                variant="outline" 
+                size="sm" 
+                className="hover-lift"
+                disabled={loading}
+              >
+                <Sparkles className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                {loading ? 'Refreshing...' : 'Refresh Now'}
+              </Button>
+            </div>
             <Button
               onClick={() => window.location.reload()}
               variant="ghost"
