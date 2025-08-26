@@ -1,3 +1,4 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
@@ -22,6 +23,94 @@ interface AggregatedArticle {
   category: string
   publishedAt: string
   tags: string[]
+}
+
+// AI-powered categorization function
+async function categorizeWithAI(title: string, content: string): Promise<string> {
+  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!openAIApiKey) {
+    return 'general';
+  }
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4.1-mini-2025-04-14',
+        messages: [
+          { 
+            role: 'system', 
+            content: 'Categorize this news article into one of: politics, technology, business, sports, entertainment, health, science, general. Respond with only the category name in lowercase.' 
+          },
+          { 
+            role: 'user', 
+            content: `Title: ${title}\nContent: ${content.substring(0, 500)}...` 
+          }
+        ],
+        max_completion_tokens: 10
+      }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return data.choices[0].message.content.trim().toLowerCase();
+    }
+  } catch (error) {
+    console.error('Error in AI categorization:', error);
+  }
+  
+  return 'general';
+}
+
+// Enhanced tag extraction with AI
+async function extractTagsWithAI(title: string, content: string): Promise<string[]> {
+  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!openAIApiKey) {
+    return extractTags(title + ' ' + content);
+  }
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4.1-mini-2025-04-14',
+        messages: [
+          { 
+            role: 'system', 
+            content: 'Extract 3-5 key topics/tags from this article. Return as comma-separated values in lowercase.' 
+          },
+          { 
+            role: 'user', 
+            content: `Title: ${title}\nContent: ${content.substring(0, 1000)}...` 
+          }
+        ],
+        max_completion_tokens: 50
+      }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const tags = data.choices[0].message.content
+        .split(',')
+        .map((tag: string) => tag.trim().toLowerCase())
+        .filter((tag: string) => tag.length > 2);
+      
+      return tags.slice(0, 5);
+    }
+  } catch (error) {
+    console.error('Error in AI tag extraction:', error);
+  }
+  
+  // Fallback to basic extraction
+  return extractTags(title + ' ' + content);
 }
 
 // Multiple news sources for better diversity
@@ -88,20 +177,24 @@ Deno.serve(async (req) => {
           if (data.articles) {
             for (const article of data.articles) {
               if (article.title && article.title !== '[Removed]' && article.url) {
-                // Extract keywords for better tagging
-                const tags = extractTags(article.title + ' ' + (article.description || ''))
+                // AI-powered categorization and tag extraction
+                const content = article.content || article.description || '';
+                const [aiCategory, aiTags] = await Promise.all([
+                  categorizeWithAI(article.title, content),
+                  extractTagsWithAI(article.title, content)
+                ]);
                 
                 allArticles.push({
                   title: article.title,
                   description: article.description || '',
-                  content: article.content || '',
+                  content: content,
                   url: article.url,
                   urlToImage: article.urlToImage,
                   sourceName: article.source?.name || source,
                   author: article.author,
-                  category: category,
+                  category: aiCategory, // Use AI-determined category
                   publishedAt: article.publishedAt,
-                  tags: tags
+                  tags: aiTags // Use AI-extracted tags
                 })
               }
             }
@@ -125,19 +218,23 @@ Deno.serve(async (req) => {
           if (trendingData.articles) {
             for (const article of trendingData.articles) {
               if (article.title && article.title !== '[Removed]' && article.url) {
-                const tags = extractTags(article.title + ' ' + (article.description || ''))
+                const content = article.content || article.description || '';
+                const [aiCategory, aiTags] = await Promise.all([
+                  categorizeWithAI(article.title, content),
+                  extractTagsWithAI(article.title, content)
+                ]);
                 
                 allArticles.push({
                   title: article.title,
                   description: article.description || '',
-                  content: article.content || '',
+                  content: content,
                   url: article.url,
                   urlToImage: article.urlToImage,
                   sourceName: article.source?.name || 'Trending News',
                   author: article.author,
-                  category: 'trending',
+                  category: aiCategory,
                   publishedAt: article.publishedAt,
-                  tags: tags
+                  tags: aiTags
                 })
               }
             }

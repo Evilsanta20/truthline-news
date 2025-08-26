@@ -43,19 +43,27 @@ export type Database = {
       }
       articles: {
         Row: {
+          ai_processed_at: string | null
+          ai_summary: string | null
           author: string | null
+          bias_score: number | null
           category_id: string | null
           content: string | null
           content_embedding: string | null
+          content_quality_score: number | null
           created_at: string
           created_by: string | null
+          credibility_score: number | null
           description: string | null
           engagement_score: number | null
           id: string
           is_editors_pick: boolean | null
           is_featured: boolean | null
           is_trending: boolean | null
+          polarization_score: number | null
           published_at: string | null
+          reading_time_minutes: number | null
+          sentiment_score: number | null
           source_id: string | null
           source_name: string | null
           title: string
@@ -66,19 +74,27 @@ export type Database = {
           view_count: number | null
         }
         Insert: {
+          ai_processed_at?: string | null
+          ai_summary?: string | null
           author?: string | null
+          bias_score?: number | null
           category_id?: string | null
           content?: string | null
           content_embedding?: string | null
+          content_quality_score?: number | null
           created_at?: string
           created_by?: string | null
+          credibility_score?: number | null
           description?: string | null
           engagement_score?: number | null
           id?: string
           is_editors_pick?: boolean | null
           is_featured?: boolean | null
           is_trending?: boolean | null
+          polarization_score?: number | null
           published_at?: string | null
+          reading_time_minutes?: number | null
+          sentiment_score?: number | null
           source_id?: string | null
           source_name?: string | null
           title: string
@@ -89,19 +105,27 @@ export type Database = {
           view_count?: number | null
         }
         Update: {
+          ai_processed_at?: string | null
+          ai_summary?: string | null
           author?: string | null
+          bias_score?: number | null
           category_id?: string | null
           content?: string | null
           content_embedding?: string | null
+          content_quality_score?: number | null
           created_at?: string
           created_by?: string | null
+          credibility_score?: number | null
           description?: string | null
           engagement_score?: number | null
           id?: string
           is_editors_pick?: boolean | null
           is_featured?: boolean | null
           is_trending?: boolean | null
+          polarization_score?: number | null
           published_at?: string | null
+          reading_time_minutes?: number | null
+          sentiment_score?: number | null
           source_id?: string | null
           source_name?: string | null
           title?: string
@@ -312,6 +336,50 @@ export type Database = {
         }
         Relationships: []
       }
+      user_feedback: {
+        Row: {
+          article_id: string
+          bias_feedback: string | null
+          created_at: string | null
+          feedback_type: string
+          id: string
+          quality_feedback: string | null
+          rating: number | null
+          relevance_score: number | null
+          user_id: string
+        }
+        Insert: {
+          article_id: string
+          bias_feedback?: string | null
+          created_at?: string | null
+          feedback_type: string
+          id?: string
+          quality_feedback?: string | null
+          rating?: number | null
+          relevance_score?: number | null
+          user_id: string
+        }
+        Update: {
+          article_id?: string
+          bias_feedback?: string | null
+          created_at?: string | null
+          feedback_type?: string
+          id?: string
+          quality_feedback?: string | null
+          rating?: number | null
+          relevance_score?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_feedback_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_preferences: {
         Row: {
           blocked_sources: string[] | null
@@ -350,6 +418,98 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_reading_patterns: {
+        Row: {
+          avg_session_duration: number | null
+          bias_tolerance: number | null
+          category_preferences: Json | null
+          created_at: string | null
+          engagement_score: number | null
+          id: string
+          preferred_sources: string[] | null
+          reading_time_preference: number | null
+          sentiment_preference: number | null
+          topics_of_interest: string[] | null
+          total_articles_read: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          avg_session_duration?: number | null
+          bias_tolerance?: number | null
+          category_preferences?: Json | null
+          created_at?: string | null
+          engagement_score?: number | null
+          id?: string
+          preferred_sources?: string[] | null
+          reading_time_preference?: number | null
+          sentiment_preference?: number | null
+          topics_of_interest?: string[] | null
+          total_articles_read?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          avg_session_duration?: number | null
+          bias_tolerance?: number | null
+          category_preferences?: Json | null
+          created_at?: string | null
+          engagement_score?: number | null
+          id?: string
+          preferred_sources?: string[] | null
+          reading_time_preference?: number | null
+          sentiment_preference?: number | null
+          topics_of_interest?: string[] | null
+          total_articles_read?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_recommendations: {
+        Row: {
+          algorithm_used: string | null
+          article_id: string
+          clicked_at: string | null
+          created_at: string | null
+          id: string
+          recommendation_reason: string | null
+          recommendation_score: number
+          shown_at: string | null
+          user_id: string
+        }
+        Insert: {
+          algorithm_used?: string | null
+          article_id: string
+          clicked_at?: string | null
+          created_at?: string | null
+          id?: string
+          recommendation_reason?: string | null
+          recommendation_score: number
+          shown_at?: string | null
+          user_id: string
+        }
+        Update: {
+          algorithm_used?: string | null
+          article_id?: string
+          clicked_at?: string | null
+          created_at?: string | null
+          id?: string
+          recommendation_reason?: string | null
+          recommendation_score?: number
+          shown_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_recommendations_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
