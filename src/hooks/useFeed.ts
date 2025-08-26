@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { usePersonalization, PersonalizedArticle } from './usePersonalization'
-import { generateDynamicArticles } from '@/utils/seedArticles'
+import { fetchNewsWithFirecrawl } from '@/utils/seedArticles'
 import { FeedSettings } from '@/components/reels/SettingsDrawer'
 
 export interface UseFeedOptions {
@@ -282,13 +282,26 @@ export const useFeed = (
     try {
       setLoading(true)
       
-      // Use real news aggregators instead of fake generation
-      console.log('Fetching fresh news from real sources...');
+      // Try Firecrawl first (more reliable), then fallback to regular APIs
+      console.log('Fetching fresh news from real sources...')
       
-      // Call enhanced news aggregator for different categories
-      const categories = ['general', 'technology', 'business', 'health', 'sports'];
+      const categories = ['general', 'technology', 'business', 'health', 'sports']
+      let totalFetched = 0
       
       for (const category of categories) {
+        try {
+          // Try Firecrawl first
+          const firecrawlResult = await fetchNewsWithFirecrawl(category, 8)
+          if (firecrawlResult.articles_count > 0) {
+            totalFetched += firecrawlResult.articles_count
+            console.log(`Firecrawl fetched ${firecrawlResult.articles_count} articles for ${category}`)
+            continue // Skip fallback if Firecrawl worked
+          }
+        } catch (error) {
+          console.warn(`Firecrawl failed for ${category}, trying fallback:`, error)
+        }
+        
+        // Fallback to enhanced news aggregator
         try {
           await supabase.functions.invoke('enhanced-news-aggregator', {
             body: { 
@@ -297,9 +310,9 @@ export const useFeed = (
               refresh: true,
               forceRefresh: true 
             }
-          });
+          })
         } catch (error) {
-          console.warn(`Failed to fetch ${category} news:`, error);
+          console.warn(`Failed to fetch ${category} news:`, error)
         }
       }
       

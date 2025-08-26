@@ -59,6 +59,35 @@ export const aggregateFromMultipleSources = async (sources: string[] = ['newsapi
   }
 };
 
+// Enhanced Firecrawl news aggregation - much more reliable
+export const fetchNewsWithFirecrawl = async (category: string = 'general', limit: number = 20, sources?: string[]) => {
+  try {
+    const { data, error } = await supabase.functions.invoke('firecrawl-news-aggregator', {
+      body: { 
+        category, 
+        limit,
+        sources
+      }
+    });
+
+    if (error) {
+      console.error('Error fetching news with Firecrawl:', error);
+      throw error;
+    }
+
+    console.log(`Firecrawl fetched ${data?.articles?.length || 0} real articles from ${category} category`);
+    return {
+      success: true,
+      articles_count: data?.articles?.length || 0,
+      articles: data?.articles || [],
+      message: data?.message || 'Articles fetched successfully'
+    };
+  } catch (error) {
+    console.error('Error in fetchNewsWithFirecrawl:', error);
+    throw error;
+  }
+};
+
 // Legacy function - kept for backward compatibility but now uses real news
 export const generateDynamicArticles = async (count: number = 20) => {
   console.warn('generateDynamicArticles is deprecated. Use fetchRealNews instead.');

@@ -80,6 +80,9 @@ verify_jwt = false
 [functions.ai-content-analysis]
 verify_jwt = false
 
+[functions.firecrawl-news-aggregator]
+verify_jwt = false
+
 [edge_runtime]
 policy = "per_function"
 inspector_port = 54330

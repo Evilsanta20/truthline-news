@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { usePersonalization } from '@/hooks/usePersonalization'
 import { useLiveUserActivity } from '@/hooks/useLiveUserActivity'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
-import { generateDynamicArticles } from '@/utils/seedArticles'
+import { fetchNewsWithFirecrawl } from '@/utils/seedArticles'
 import { supabase } from '@/integrations/supabase/client'
 import FeedSettingsDrawer from './FeedSettingsDrawer'
 import { 
@@ -283,16 +283,28 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
 
   const generateFreshArticles = async () => {
     try {
-      setGeneratingArticles(true);
+      setGeneratingArticles(true)
       
-      // Use real news aggregators instead of fake generation
-      console.log('Fetching fresh news from real sources...');
+      // Try Firecrawl first (more reliable), then fallback to regular APIs
+      console.log('Fetching fresh news from real sources...')
       
-      // Call enhanced news aggregator for different categories
-      const categories = ['general', 'technology', 'business', 'health', 'sports', 'politics'];
-      let totalFetched = 0;
+      const categories = ['general', 'technology', 'business', 'health', 'sports', 'politics']
+      let totalFetched = 0
       
       for (const category of categories) {
+        try {
+          // Try Firecrawl first
+          const firecrawlResult = await fetchNewsWithFirecrawl(category, 12)
+          if (firecrawlResult.articles_count > 0) {
+            totalFetched += firecrawlResult.articles_count
+            console.log(`Firecrawl fetched ${firecrawlResult.articles_count} articles for ${category}`)
+            continue // Skip fallback if Firecrawl worked
+          }
+        } catch (error) {
+          console.warn(`Firecrawl failed for ${category}, trying fallback:`, error)
+        }
+        
+        // Fallback to enhanced news aggregator
         try {
           const result = await supabase.functions.invoke('enhanced-news-aggregator', {
             body: { 
@@ -301,32 +313,32 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
               refresh: true,
               forceRefresh: true 
             }
-          });
+          })
           
           if (result.data?.articles) {
-            totalFetched += result.data.articles.length;
+            totalFetched += result.data.articles.length
           }
         } catch (error) {
-          console.warn(`Failed to fetch ${category} news:`, error);
+          console.warn(`Failed to fetch ${category} news:`, error)
         }
       }
       
       toast({
         title: "Fresh News Loaded!",
         description: `Fetched ${totalFetched} real articles from news sources`,
-      });
+      })
       
       // Refresh recommendations after fetching real articles
-      manualRefresh();
+      manualRefresh()
     } catch (error) {
-      console.error('Error fetching fresh news:', error);
+      console.error('Error fetching fresh news:', error)
       toast({
         title: "Error",
         description: "Failed to fetch fresh news. Please try again.",
         variant: "destructive"
-      });
+      })
     } finally {
-      setGeneratingArticles(false);
+      setGeneratingArticles(false)
     }
   }
 
