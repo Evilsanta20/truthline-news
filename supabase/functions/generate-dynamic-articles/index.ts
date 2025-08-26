@@ -1,3 +1,4 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.53.0';
 
@@ -12,110 +13,87 @@ const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!;
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Dynamic article templates for realistic content generation
-const articleTemplates = [
-  {
-    category: 'Technology',
-    templates: [
-      { title: 'AI Breakthrough in {field} Shows {percentage}% Improvement', content: 'Researchers have developed a new AI system that demonstrates significant advances in {field}. The breakthrough shows {percentage}% improvement over existing methods, potentially revolutionizing how we approach {application}. Early tests indicate the technology could be ready for commercial use within {timeframe}.', topics: ['artificial intelligence', 'research', 'innovation'] },
-      { title: 'New {device} Features {capability} Technology', content: 'Tech giant announces their latest {device} will include groundbreaking {capability} technology. The new feature promises to enhance user experience by {benefit}. Industry experts predict this could set new standards for {industry} devices.', topics: ['technology', 'innovation', 'consumer electronics'] },
-      { title: 'Cybersecurity Alert: {threat} Targets {sector}', content: 'Security researchers have identified a new {threat} specifically targeting {sector} organizations. The attack vector exploits {vulnerability} and has already affected {number} companies globally. Experts recommend immediate {action} to prevent data breaches.', topics: ['cybersecurity', 'data protection', 'enterprise'] }
-    ]
-  },
-  {
-    category: 'Health',
-    templates: [
-      { title: 'Study Reveals {finding} About {condition}', content: 'A comprehensive study involving {participants} participants has revealed important insights about {condition}. The research, published in {journal}, shows that {finding}. This discovery could lead to new treatment approaches within {timeframe}.', topics: ['health research', 'medical study', 'healthcare'] },
-      { title: 'New Treatment for {disease} Shows Promise', content: 'Clinical trials for a new {disease} treatment have shown {result}. The therapy, developed by {institution}, offers hope for millions of patients worldwide. Researchers report {benefit} with minimal side effects in Phase {phase} trials.', topics: ['clinical trials', 'medical breakthrough', 'treatment'] },
-      { title: 'Health Officials Issue {type} Alert for {region}', content: 'Public health authorities have issued a {type} alert for {region} following reports of {issue}. Officials recommend {action} as a precautionary measure. The situation is being closely monitored with regular updates expected.', topics: ['public health', 'safety alert', 'prevention'] }
-    ]
-  },
-  {
-    category: 'Sports',
-    templates: [
-      { title: '{team} Defeats {opponent} in Thrilling {score} Victory', content: 'In a spectacular match that kept fans on the edge of their seats, {team} secured a {score} victory over {opponent}. The game featured outstanding performances from {player1} and {player2}. This win positions {team} strongly for the upcoming {event}.', topics: ['sports', 'competition', 'athletics'] },
-      { title: 'Olympic Record Broken in {event}', content: 'The {event} world record was shattered today as {athlete} achieved a time/score of {record}. The performance came during {competition} and breaks a record that had stood for {years} years. This achievement positions {athlete} as a top contender for upcoming international competitions.', topics: ['olympics', 'world record', 'athletics'] },
-      { title: '{league} Season Highlights: Top Performers', content: 'As the {league} season reaches its midpoint, several athletes have emerged as standout performers. {player} leads in {stat}, while {team} maintains their position at the top of the standings. Fans can expect intense competition in the remaining matches.', topics: ['professional sports', 'season analysis', 'performance'] }
-    ]
-  },
-  {
-    category: 'Business',
-    templates: [
-      { title: '{company} Reports {type} Earnings for Q{quarter}', content: '{company} announced {type} quarterly earnings, with revenue reaching ${amount} billion. The results were driven by strong performance in {sector} and increased demand for {product}. CEO {name} expressed optimism about future growth prospects.', topics: ['earnings', 'corporate finance', 'market performance'] },
-      { title: 'Market Analysis: {sector} Sector Shows {trend}', content: 'Financial analysts report that the {sector} sector is experiencing {trend} this quarter. Key indicators include {metric1} and {metric2}. Investors are advised to {advice} given current market conditions and projected {outlook}.', topics: ['market analysis', 'investment', 'economic trends'] },
-      { title: 'New Partnership Between {company1} and {company2}', content: 'Industry leaders {company1} and {company2} have announced a strategic partnership focused on {focus}. The collaboration aims to {goal} and is expected to generate ${value} million in revenue over {timeframe}. Both companies see this as a key growth opportunity.', topics: ['business partnership', 'corporate strategy', 'collaboration'] }
-    ]
-  }
-];
-
-// Generate dynamic content
-const generateDynamicContent = (template: any, category: string) => {
-  const variables = {
-    field: ['machine learning', 'quantum computing', 'robotics', 'biotechnology', 'renewable energy'][Math.floor(Math.random() * 5)],
-    percentage: (Math.floor(Math.random() * 40) + 10).toString(),
-    application: ['medical diagnosis', 'financial analysis', 'climate modeling', 'drug discovery', 'autonomous systems'][Math.floor(Math.random() * 5)],
-    timeframe: ['18 months', '2 years', '3-5 years', 'the next decade'][Math.floor(Math.random() * 4)],
-    device: ['smartphone', 'tablet', 'laptop', 'smartwatch', 'VR headset'][Math.floor(Math.random() * 5)],
-    capability: ['neural processing', 'holographic display', 'biometric scanning', 'wireless charging', 'AR integration'][Math.floor(Math.random() * 5)],
-    benefit: ['40% faster processing', 'improved battery life', 'enhanced security', 'better user experience', 'increased productivity'][Math.floor(Math.random() * 5)],
-    industry: ['mobile', 'wearable', 'gaming', 'enterprise', 'consumer'][Math.floor(Math.random() * 5)],
-    threat: ['ransomware', 'phishing campaign', 'data breach', 'supply chain attack', 'zero-day exploit'][Math.floor(Math.random() * 5)],
-    sector: ['healthcare', 'financial services', 'government', 'education', 'manufacturing'][Math.floor(Math.random() * 5)],
-    vulnerability: ['unpatched software', 'weak passwords', 'misconfigured servers', 'social engineering', 'outdated protocols'][Math.floor(Math.random() * 5)],
-    number: (Math.floor(Math.random() * 500) + 50).toString(),
-    action: ['software updates', 'security audits', 'staff training', 'network monitoring', 'backup verification'][Math.floor(Math.random() * 5)],
-    finding: ['significant correlation', 'promising results', 'unexpected benefits', 'new risk factors', 'innovative treatment approach'][Math.floor(Math.random() * 5)],
-    condition: ['diabetes', 'heart disease', 'cancer', 'Alzheimer\'s', 'arthritis'][Math.floor(Math.random() * 5)],
-    participants: (Math.floor(Math.random() * 10000) + 1000).toString(),
-    journal: ['Nature Medicine', 'The Lancet', 'New England Journal of Medicine', 'Science', 'Cell'][Math.floor(Math.random() * 5)],
-    disease: ['cancer', 'diabetes', 'heart disease', 'neurological disorders', 'autoimmune diseases'][Math.floor(Math.random() * 5)],
-    result: ['promising outcomes', 'significant improvement', 'reduced symptoms', 'enhanced quality of life', 'better survival rates'][Math.floor(Math.random() * 5)],
-    institution: ['Mayo Clinic', 'Johns Hopkins', 'Stanford Medical', 'MIT Research', 'Harvard Medical'][Math.floor(Math.random() * 5)],
-    benefit: ['80% symptom reduction', 'improved mobility', 'enhanced cognitive function', 'better pain management', 'increased energy levels'][Math.floor(Math.random() * 5)],
-    phase: ['II', 'III'][Math.floor(Math.random() * 2)],
-    type: ['health', 'safety', 'travel', 'food safety', 'environmental'][Math.floor(Math.random() * 5)],
-    region: ['California', 'New York', 'Texas', 'Florida', 'the Northeast'][Math.floor(Math.random() * 5)],
-    issue: ['contamination concerns', 'disease outbreak', 'air quality issues', 'water safety concerns', 'food recalls'][Math.floor(Math.random() * 5)],
-    team: ['Lakers', 'Warriors', 'Celtics', 'Heat', 'Knicks'][Math.floor(Math.random() * 5)],
-    opponent: ['Clippers', 'Nuggets', '76ers', 'Bucks', 'Nets'][Math.floor(Math.random() * 5)],
-    score: [`${Math.floor(Math.random() * 50) + 80}-${Math.floor(Math.random() * 50) + 70}`, `${Math.floor(Math.random() * 30) + 90}-${Math.floor(Math.random() * 30) + 80}`][Math.floor(Math.random() * 2)],
-    player1: ['LeBron James', 'Stephen Curry', 'Kevin Durant', 'Giannis Antetokounmpo', 'Luka Dončić'][Math.floor(Math.random() * 5)],
-    player2: ['Anthony Davis', 'Klay Thompson', 'Kyrie Irving', 'Jrue Holiday', 'Kristaps Porziņģis'][Math.floor(Math.random() * 5)],
-    event: ['playoffs', 'championship', 'tournament', 'finals', 'semifinals'][Math.floor(Math.random() * 5)],
-    athlete: ['Sarah Johnson', 'Michael Chen', 'Emma Rodriguez', 'David Kim', 'Lisa Thompson'][Math.floor(Math.random() * 5)],
-    record: ['9.58 seconds', '2:01:09', '8.95 meters', '6.14 meters', '23.12 meters'][Math.floor(Math.random() * 5)],
-    competition: ['World Championships', 'Olympic Trials', 'Diamond League', 'National Championships', 'International Meet'][Math.floor(Math.random() * 5)],
-    years: (Math.floor(Math.random() * 15) + 5).toString(),
-    league: ['NBA', 'NFL', 'MLB', 'NHL', 'MLS'][Math.floor(Math.random() * 5)],
-    stat: ['points', 'rebounds', 'assists', 'goals', 'saves'][Math.floor(Math.random() * 5)],
-    company: ['Apple', 'Google', 'Microsoft', 'Amazon', 'Meta'][Math.floor(Math.random() * 5)],
-    amount: (Math.floor(Math.random() * 50) + 10).toString(),
-    quarter: ['1', '2', '3', '4'][Math.floor(Math.random() * 4)],
-    name: ['Tim Cook', 'Sundar Pichai', 'Satya Nadella', 'Andy Jassy', 'Mark Zuckerberg'][Math.floor(Math.random() * 5)],
-    product: ['smartphones', 'cloud services', 'software licenses', 'advertising', 'hardware'][Math.floor(Math.random() * 5)],
-    trend: ['strong growth', 'market volatility', 'consolidation', 'innovation surge', 'sustainable expansion'][Math.floor(Math.random() * 5)],
-    metric1: ['increased trading volume', 'rising valuations', 'merger activity', 'IPO launches', 'dividend increases'][Math.floor(Math.random() * 5)],
-    metric2: ['improved margins', 'market share gains', 'cost optimization', 'revenue growth', 'profit increases'][Math.floor(Math.random() * 5)],
-    advice: ['consider diversification', 'monitor closely', 'maintain positions', 'increase exposure', 'reduce risk'][Math.floor(Math.random() * 5)],
-    outlook: ['positive momentum', 'market stability', 'continued growth', 'strong fundamentals', 'emerging opportunities'][Math.floor(Math.random() * 5)],
-    company1: ['Tesla', 'Ford', 'GM', 'Toyota', 'BMW'][Math.floor(Math.random() * 5)],
-    company2: ['Intel', 'NVIDIA', 'AMD', 'Qualcomm', 'Samsung'][Math.floor(Math.random() * 5)],
-    focus: ['autonomous vehicles', 'electric batteries', 'semiconductor technology', 'AI integration', 'sustainable manufacturing'][Math.floor(Math.random() * 5)],
-    goal: ['accelerate innovation', 'reduce costs', 'expand market reach', 'improve efficiency', 'enhance sustainability'][Math.floor(Math.random() * 5)],
-    value: (Math.floor(Math.random() * 1000) + 100).toString(),
+// AI-powered article generation
+const generateAIArticle = async (category: string): Promise<{title: string, content: string, summary: string, imageQuery: string, topics: string[]}> => {
+  const prompts = {
+    'Technology': 'Generate a realistic technology news article about recent breakthroughs, product launches, or industry developments. Include specific details, companies, and technical information.',
+    'Health': 'Generate a realistic health and medical news article about recent research findings, treatment breakthroughs, or public health developments. Include scientific details and expert perspectives.',
+    'Sports': 'Generate a realistic sports news article about recent games, player performances, trades, or sporting events. Include specific scores, player names, and detailed game analysis.',
+    'Business': 'Generate a realistic business news article about corporate earnings, market trends, mergers, or economic developments. Include financial details and market analysis.',
+    'Politics': 'Generate a realistic political news article about recent policy developments, election news, or government announcements. Include specific details and political context.',
+    'Entertainment': 'Generate a realistic entertainment news article about movies, TV shows, music, or celebrity news. Include industry insights and cultural impact.',
+    'Science': 'Generate a realistic science news article about recent discoveries, research findings, or scientific breakthroughs. Include technical details and research context.'
   };
 
-  let title = template.title;
-  let content = template.content;
+  const prompt = prompts[category as keyof typeof prompts] || prompts['Technology'];
 
-  // Replace all variables in title and content
-  Object.entries(variables).forEach(([key, value]) => {
-    const regex = new RegExp(`{${key}}`, 'g');
-    title = title.replace(regex, value);
-    content = content.replace(regex, value);
-  });
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a professional news writer. Generate realistic, engaging news articles that sound authentic and current. Always include:
+            1. A compelling headline (max 80 characters)
+            2. Full article content (300-500 words) with proper paragraphs
+            3. A brief summary (2-3 sentences)
+            4. An image search query for relevant photos
+            5. 3-5 relevant topic tags
+            
+            Format your response as JSON:
+            {
+              "title": "Article headline",
+              "content": "Full article content with multiple paragraphs",
+              "summary": "Brief 2-3 sentence summary",
+              "imageQuery": "search query for relevant image",
+              "topics": ["tag1", "tag2", "tag3"]
+            }`
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.8,
+        max_tokens: 1000
+      }),
+    });
 
-  return { title, content, topics: template.topics };
+    const data = await response.json();
+    const aiResponse = JSON.parse(data.choices[0].message.content);
+    return aiResponse;
+  } catch (error) {
+    console.error('Error generating AI article:', error);
+    // Fallback to basic template
+    return {
+      title: `Breaking News in ${category}`,
+      content: `This is a developing story in the ${category.toLowerCase()} sector. Our newsroom is working to bring you the latest updates as they become available. This story involves significant developments that could impact the industry and consumers alike.
+
+The situation continues to evolve with multiple stakeholders monitoring the developments closely. Industry experts suggest this could have far-reaching implications for the market and related sectors.
+
+We will continue to update this story as more information becomes available. Stay tuned for the latest developments and analysis on this important ${category.toLowerCase()} news story.`,
+      summary: `Breaking developments in ${category.toLowerCase()} with potential industry impact.`,
+      imageQuery: `${category.toLowerCase()} news technology`,
+      topics: [category.toLowerCase(), 'breaking news', 'industry']
+    };
+  }
+};
+
+// Get image from Unsplash
+const getUnsplashImage = async (query: string): Promise<string | null> => {
+  try {
+    const response = await fetch(`https://source.unsplash.com/800x600/?${encodeURIComponent(query)}`);
+    return response.url;
+  } catch (error) {
+    console.error('Error fetching image:', error);
+    return null;
+  }
 };
 
 serve(async (req) => {
@@ -148,50 +126,58 @@ serve(async (req) => {
 
       if (!targetCategory) continue;
 
-      // Find templates for this category
-      const categoryTemplates = articleTemplates.find(t => 
-        t.category.toLowerCase() === targetCategory.name.toLowerCase()
-      );
-
-      if (!categoryTemplates) continue;
-
-      // Select random template
-      const template = categoryTemplates.templates[Math.floor(Math.random() * categoryTemplates.templates.length)];
+      // Generate AI-powered article
+      const aiArticle = await generateAIArticle(targetCategory.name);
       
-      // Generate dynamic content
-      const { title, content, topics } = generateDynamicContent(template, targetCategory.name);
+      // Get relevant image
+      const imageUrl = await getUnsplashImage(aiArticle.imageQuery);
+      
+      // Create publication time (recent, within last 3 days)
+      const publishedAt = new Date(now.getTime() - Math.random() * 3 * 24 * 60 * 60 * 1000);
 
-      // Create publication time (recent)
-      const publishedAt = new Date(now.getTime() - Math.random() * 24 * 60 * 60 * 1000); // Within last 24 hours
+      // Generate realistic quality scores
+      const contentQualityScore = 0.75 + Math.random() * 0.2; // 0.75-0.95 (high quality)
+      const credibilityScore = 0.7 + Math.random() * 0.25; // 0.7-0.95
+      const biasScore = 0.2 + Math.random() * 0.3; // 0.2-0.5 (lower bias)
+      const sentimentScore = 0.45 + Math.random() * 0.1; // 0.45-0.55 (neutral)
 
-      // Generate quality scores
-      const contentQualityScore = 0.6 + Math.random() * 0.3; // 0.6-0.9
-      const credibilityScore = 0.5 + Math.random() * 0.4; // 0.5-0.9
-      const biasScore = 0.3 + Math.random() * 0.4; // 0.3-0.7
-      const sentimentScore = 0.4 + Math.random() * 0.2; // 0.4-0.6 (neutral)
+      // Generate unique article ID for internal URL
+      const articleId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
       const article = {
-        title,
-        description: content.substring(0, 150) + '...',
-        content,
-        url: `https://example.com/article/${Date.now()}-${i}`,
-        source_name: ['Reuters', 'Associated Press', 'BBC News', 'CNN', 'NPR', 'The Guardian', 'Wall Street Journal'][Math.floor(Math.random() * 7)],
+        title: aiArticle.title,
+        description: aiArticle.summary,
+        content: aiArticle.content,
+        url: `/article/${articleId}`, // Internal URL for proper routing
+        url_to_image: imageUrl,
+        source_name: ['Reuters', 'Associated Press', 'BBC News', 'CNN', 'NPR', 'The Guardian', 'Wall Street Journal', 'Bloomberg', 'Financial Times'][Math.floor(Math.random() * 9)],
+        author: ['Sarah Johnson', 'Michael Chen', 'Emma Rodriguez', 'David Kim', 'Lisa Thompson', 'James Wilson', 'Maria Garcia', 'Robert Brown'][Math.floor(Math.random() * 8)],
         category_id: targetCategory.id,
         published_at: publishedAt.toISOString(),
-        is_featured: Math.random() < 0.3,
-        is_trending: Math.random() < 0.4,
-        topic_tags: topics,
-        engagement_score: Math.floor(Math.random() * 1000),
+        is_featured: Math.random() < 0.25,
+        is_trending: Math.random() < 0.35,
+        is_editors_pick: Math.random() < 0.15,
+        topic_tags: aiArticle.topics,
+        engagement_score: Math.floor(Math.random() * 2000) + 100, // 100-2100
+        view_count: Math.floor(Math.random() * 10000) + 50,
         content_quality_score: Math.round(contentQualityScore * 100) / 100,
         credibility_score: Math.round(credibilityScore * 100) / 100,
         bias_score: Math.round(biasScore * 100) / 100,
         sentiment_score: Math.round(sentimentScore * 100) / 100,
-        reading_time_minutes: Math.ceil(content.split(' ').length / 200), // Assuming 200 WPM
+        polarization_score: 0.2 + Math.random() * 0.2, // Low polarization
+        reading_time_minutes: Math.max(1, Math.ceil(aiArticle.content.split(' ').length / 200)),
+        ai_summary: aiArticle.summary,
+        ai_processed_at: now.toISOString(),
         created_at: now.toISOString(),
         updated_at: now.toISOString()
       };
 
       generatedArticles.push(article);
+      
+      // Add small delay between API calls to avoid rate limiting
+      if (i < count - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
     }
 
     // Insert articles into database

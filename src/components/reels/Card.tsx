@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card as UICard, CardContent } from '@/components/ui/card'
@@ -49,6 +50,7 @@ export const ReelCard = ({
   const [liked, setLiked] = useState(false)
   const [bookmarked, setBookmarked] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
+  const navigate = useNavigate()
 
   const handleImageLoad = () => {
     setImageLoading(false)
@@ -79,6 +81,15 @@ export const ReelCard = ({
   }
 
   const handleCardClick = () => {
+    // Extract article ID from URL for navigation
+    const articleId = article.url?.split('/').pop();
+    if (articleId) {
+      navigate(`/article/${articleId}`);
+    } else {
+      // Fallback navigation using article id
+      navigate(`/article/${article.id}`);
+    }
+    
     onSelect?.(article)
     onView?.(article)
   }

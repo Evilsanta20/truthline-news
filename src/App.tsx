@@ -7,6 +7,7 @@ import ViewerPage from "./pages/ViewerPage";
 import EditorPage from "./pages/EditorPage";
 import AdminPage from "./pages/AdminPage";
 import AdminContentDashboard from "./pages/AdminContentDashboard";
+import ArticleDetail from "./pages/ArticleDetail";
 
 const App = () => (
   <div className="min-h-screen bg-background">
@@ -19,6 +20,7 @@ const App = () => (
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/admin/content-quality" element={<AdminContentDashboard />} />
         <Route path="/auth" element={<AuthPage />} />
+        <Route path="/article/:id" element={<ArticleDetail />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </main>
