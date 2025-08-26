@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/integrations/supabase/client'
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 
 export interface UserPreferences {
   id?: string
@@ -38,6 +39,8 @@ export const usePersonalization = (userId: string) => {
   const [recommendations, setRecommendations] = useState<PersonalizedArticle[]>([])
   const [loading, setLoading] = useState(false)
   const [topicScores, setTopicScores] = useState<Array<{topic: string, score: number}>>([])
+  const [liveEngagementScores, setLiveEngagementScores] = useState<{[key: string]: number}>({})
+  const [realTimeUpdates, setRealTimeUpdates] = useState(0) // Counter to trigger re-renders
 
   // Load user preferences
   const loadPreferences = useCallback(async () => {
@@ -194,14 +197,130 @@ export const usePersonalization = (userId: string) => {
     }
   }, [preferences, getRecommendations])
 
-  // Auto-refresh recommendations periodically
+  // Set up real-time subscriptions for dynamic updates
   useEffect(() => {
-    const interval = setInterval(() => {
-      getRecommendations()
-    }, 5 * 60 * 1000) // Refresh every 5 minutes
+    // Subscribe to new articles
+    const articlesChannel = supabase
+      .channel('articles-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'articles'
+        },
+        (payload: RealtimePostgresChangesPayload<any>) => {
+          console.log('New article added:', payload.new)
+          // Refresh recommendations when new articles arrive
+          getRecommendations(20, false)
+          setRealTimeUpdates(prev => prev + 1)
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'articles'
+        },
+        (payload: RealtimePostgresChangesPayload<any>) => {
+          console.log('Article updated:', payload.new)
+          // Update specific article in recommendations
+          setRecommendations(prev => 
+            prev.map(article => 
+              article.id === payload.new.id 
+                ? { ...article, ...payload.new }
+                : article
+            )
+          )
+          setRealTimeUpdates(prev => prev + 1)
+        }
+      )
+      .subscribe()
 
-    return () => clearInterval(interval)
-  }, [getRecommendations])
+    // Subscribe to article interactions for live engagement tracking
+    const interactionsChannel = supabase
+      .channel('interactions-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'article_interactions'
+        },
+        (payload: RealtimePostgresChangesPayload<any>) => {
+          console.log('New interaction:', payload.new)
+          const articleId = payload.new.article_id
+          const interactionType = payload.new.interaction_type
+          const value = payload.new.interaction_value || 1
+          
+          // Update live engagement scores
+          setLiveEngagementScores(prev => ({
+            ...prev,
+            [articleId]: (prev[articleId] || 0) + (
+              interactionType === 'view' ? 1 :
+              interactionType === 'like' ? 2 :
+              interactionType === 'bookmark' ? 3 :
+              interactionType === 'share' ? 5 :
+              interactionType === 'read_time' ? Math.floor(value / 60) :
+              1
+            )
+          }))
+          
+          // Update engagement score in recommendations
+          setRecommendations(prev => 
+            prev.map(article => 
+              article.id === articleId
+                ? { 
+                    ...article, 
+                    engagement_score: (article.engagement_score || 0) + (
+                      interactionType === 'view' ? 1 :
+                      interactionType === 'like' ? 2 :
+                      interactionType === 'bookmark' ? 3 :
+                      interactionType === 'share' ? 5 :
+                      interactionType === 'read_time' ? Math.floor(value / 60) :
+                      1
+                    )
+                  }
+                : article
+            )
+          )
+          setRealTimeUpdates(prev => prev + 1)
+        }
+      )
+      .subscribe()
+
+    // Subscribe to user preferences changes
+    const preferencesChannel = supabase
+      .channel('preferences-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'user_preferences',
+          filter: `user_id=eq.${userId}`
+        },
+        (payload: RealtimePostgresChangesPayload<any>) => {
+          console.log('Preferences updated:', payload.new)
+          setPreferences(payload.new)
+          setRealTimeUpdates(prev => prev + 1)
+        }
+      )
+      .subscribe()
+
+    // Auto-refresh recommendations periodically (reduced frequency due to real-time updates)
+    const interval = setInterval(() => {
+      getRecommendations(20, false)
+    }, 10 * 60 * 1000) // Refresh every 10 minutes (increased from 5)
+
+    return () => {
+      clearInterval(interval)
+      supabase.removeChannel(articlesChannel)
+      supabase.removeChannel(interactionsChannel)
+      supabase.removeChannel(preferencesChannel)
+    }
+  }, [getRecommendations, userId])
 
   // Load initial data
   useEffect(() => {
@@ -211,11 +330,16 @@ export const usePersonalization = (userId: string) => {
 
   return {
     preferences,
-    recommendations,
+    recommendations: recommendations.map(article => ({
+      ...article,
+      engagement_score: liveEngagementScores[article.id] || article.engagement_score
+    })),
     topicScores,
     loading,
     trackInteraction,
     updatePreferences,
-    refreshRecommendations: (forceRefresh?: boolean) => getRecommendations(20, forceRefresh || false)
+    refreshRecommendations: (forceRefresh?: boolean) => getRecommendations(20, forceRefresh || false),
+    liveEngagementScores,
+    realTimeUpdates
   }
 }

@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { usePersonalization } from '@/hooks/usePersonalization'
+import { useLiveUserActivity } from '@/hooks/useLiveUserActivity'
 import { 
   TrendingUp, 
   Star, 
@@ -68,8 +69,12 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
     loading,
     trackInteraction,
     updatePreferences,
-    refreshRecommendations
+    refreshRecommendations,
+    liveEngagementScores,
+    realTimeUpdates
   } = usePersonalization(userId)
+  
+  const { liveStats, isConnected, broadcastActivity } = useLiveUserActivity()
 
   // Load bookmarks from localStorage
   useEffect(() => {
@@ -172,6 +177,7 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
   const handleArticleClick = (article: any) => {
     trackInteraction(article.id, 'view')
     startReadingTimer(article.id)
+    broadcastActivity(userId, article.id, 'viewing')
     
     // Open article in new tab after short delay to track view
     setTimeout(() => {
@@ -193,6 +199,7 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
     } else {
       newBookmarks.add(articleId)
       trackInteraction(articleId, 'bookmark', 1)
+      broadcastActivity(userId, articleId, 'bookmarking')
       toast({
         title: "Bookmark added", 
         description: "Article saved to bookmarks"
@@ -212,6 +219,7 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
 
   const handleShare = (articleId: string) => {
     trackInteraction(articleId, 'share')
+    broadcastActivity(userId, articleId, 'sharing')
     // Copy URL to clipboard
     navigator.clipboard.writeText(window.location.origin + '/article/' + articleId)
     toast({
@@ -283,6 +291,12 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
             <p className="text-muted-foreground mt-2 flex items-center gap-2">
               <Globe className="w-4 h-4" />
               {recommendations.length} articles tailored for you • Next refresh in {formatCountdown(nextRefresh)}
+              {isConnected && (
+                <span className="flex items-center gap-1 text-accent">
+                  <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
+                  Live ({liveStats.activeUsers} active)
+                </span>
+              )}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -419,9 +433,11 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
                       {article.title}
                     </h3>
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
+              <span className="flex items-center gap-1">
                         <Eye className="w-3 h-3" />
-                        {article.engagement_score || 0}
+                        <span className={liveEngagementScores[article.id] ? 'text-accent animate-pulse' : ''}>
+                          {Math.round(article.engagement_score || 0)}
+                        </span>
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />
