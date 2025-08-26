@@ -281,8 +281,29 @@ export const useFeed = (
   const generateFresh = useCallback(async () => {
     try {
       setLoading(true)
-      await generateDynamicArticles(15)
-      // Refresh after generating new content
+      
+      // Use real news aggregators instead of fake generation
+      console.log('Fetching fresh news from real sources...');
+      
+      // Call enhanced news aggregator for different categories
+      const categories = ['general', 'technology', 'business', 'health', 'sports'];
+      
+      for (const category of categories) {
+        try {
+          await supabase.functions.invoke('enhanced-news-aggregator', {
+            body: { 
+              category, 
+              limit: 10, 
+              refresh: true,
+              forceRefresh: true 
+            }
+          });
+        } catch (error) {
+          console.warn(`Failed to fetch ${category} news:`, error);
+        }
+      }
+      
+      // Refresh after fetching real news
       await refresh()
     } catch (err: any) {
       setError(err)

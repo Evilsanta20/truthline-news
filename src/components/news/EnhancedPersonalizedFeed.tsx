@@ -9,6 +9,7 @@ import { usePersonalization } from '@/hooks/usePersonalization'
 import { useLiveUserActivity } from '@/hooks/useLiveUserActivity'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 import { generateDynamicArticles } from '@/utils/seedArticles'
+import { supabase } from '@/integrations/supabase/client'
 import FeedSettingsDrawer from './FeedSettingsDrawer'
 import { 
   TrendingUp, 
@@ -283,24 +284,51 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
   const generateFreshArticles = async () => {
     try {
       setGeneratingArticles(true);
-      const result = await generateDynamicArticles(15);
+      
+      // Use real news aggregators instead of fake generation
+      console.log('Fetching fresh news from real sources...');
+      
+      // Call enhanced news aggregator for different categories
+      const categories = ['general', 'technology', 'business', 'health', 'sports', 'politics'];
+      let totalFetched = 0;
+      
+      for (const category of categories) {
+        try {
+          const result = await supabase.functions.invoke('enhanced-news-aggregator', {
+            body: { 
+              category, 
+              limit: 15, 
+              refresh: true,
+              forceRefresh: true 
+            }
+          });
+          
+          if (result.data?.articles) {
+            totalFetched += result.data.articles.length;
+          }
+        } catch (error) {
+          console.warn(`Failed to fetch ${category} news:`, error);
+        }
+      }
+      
       toast({
-        title: "Articles Generated!",
-        description: `Created ${result.generated_count} fresh articles`,
+        title: "Fresh News Loaded!",
+        description: `Fetched ${totalFetched} real articles from news sources`,
       });
-      // Refresh recommendations after generating articles
+      
+      // Refresh recommendations after fetching real articles
       manualRefresh();
     } catch (error) {
-      console.error('Error generating articles:', error);
+      console.error('Error fetching fresh news:', error);
       toast({
-        title: "Generation Failed",
-        description: "Could not generate new articles. Please try again.",
-        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch fresh news. Please try again.",
+        variant: "destructive"
       });
     } finally {
       setGeneratingArticles(false);
     }
-  };
+  }
 
   const filteredRecommendations = recommendations.filter(article => {
     const matchesSearch = searchQuery === '' || 
@@ -416,7 +444,7 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
               disabled={generatingArticles}
             >
               <Sparkles className={`w-4 h-4 mr-2 ${generatingArticles ? 'animate-spin' : ''}`} />
-              {generatingArticles ? 'Generating...' : 'Generate Fresh'}
+              {generatingArticles ? 'Fetching News...' : 'Get Fresh News'}
             </Button>
           </div>
             <Button

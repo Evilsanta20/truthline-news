@@ -132,30 +132,32 @@ export const usePersonalization = (userId: string) => {
     }
   }, [userId])
 
-  // Get AI recommendations with enhanced news aggregation
+  // Get AI recommendations with real news aggregation
   const getRecommendations = useCallback(async (limit: number = 20, forceRefresh: boolean = false) => {
     try {
       setLoading(true)
       
-      // First, refresh news from multiple sources if needed
+      // First, refresh news from real sources if needed
       if (forceRefresh) {
-        console.log('Refreshing news from multiple sources...')
+        console.log('Refreshing news from real sources...')
         
-        // Fetch from enhanced aggregator for different categories
-        const categories = ['politics', 'technology', 'business', 'health', 'sports', 'entertainment']
-        
-        for (const category of categories) {
-          try {
-            await supabase.functions.invoke('enhanced-news-aggregator', {
-              body: { category, limit: 10, refresh: true }
-            })
-          } catch (error) {
-            console.warn(`Failed to refresh ${category} news:`, error)
-          }
+        // Use the enhanced news aggregator for real news
+        try {
+          await supabase.functions.invoke('enhanced-news-aggregator', {
+            body: { 
+              category: 'general', 
+              limit: 50, 
+              refresh: true,
+              forceRefresh: true 
+            }
+          })
+          console.log('Real news aggregation completed')
+        } catch (error) {
+          console.warn('Failed to refresh real news:', error)
         }
       }
       
-      const { data, error } = await supabase.functions.invoke('ai-recommendations', {
+      const { data, error } = await supabase.functions.invoke('ai-personalized-recommendations', {
         body: { userId, limit }
       })
 

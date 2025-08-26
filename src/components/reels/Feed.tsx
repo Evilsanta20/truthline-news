@@ -231,13 +231,13 @@ export const ReelFeed = ({ userId, className }: ReelFeedProps) => {
     try {
       await generateFresh()
       toast({
-        title: "Fresh articles generated!",
-        description: "New content has been created for you"
+        title: "Real news fetched!",
+        description: "Fresh articles loaded from news sources"
       })
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to generate fresh articles",
+        description: "Failed to fetch fresh articles",
         variant: "destructive"
       })
     }
@@ -297,7 +297,7 @@ export const ReelFeed = ({ userId, className }: ReelFeedProps) => {
             className="hover-lift bg-gradient-to-r from-primary to-primary/80"
           >
             <Sparkles className="w-4 h-4 mr-2" />
-            Generate Fresh
+            Fetch Fresh News
           </Button>
           
           <Button
