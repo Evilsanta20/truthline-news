@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { usePersonalization } from '@/hooks/usePersonalization'
 import { useLiveUserActivity } from '@/hooks/useLiveUserActivity'
+import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 import { 
   TrendingUp, 
   Star, 
@@ -26,7 +27,9 @@ import {
   Zap,
   Globe,
   Calendar,
-  ExternalLink
+  ExternalLink,
+  ArrowUp,
+  RefreshCw
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
@@ -59,22 +62,57 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
   const [hasMore, setHasMore] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
-  const [nextRefresh, setNextRefresh] = useState<number>(300) // 5 minutes in seconds
   const loadMoreRef = useRef<HTMLDivElement>(null)
   
   const {
     preferences,
-    recommendations,
     topicScores,
-    loading,
     trackInteraction,
     updatePreferences,
-    refreshRecommendations,
     liveEngagementScores,
     realTimeUpdates
   } = usePersonalization(userId)
   
   const { liveStats, isConnected, broadcastActivity } = useLiveUserActivity()
+  
+  // Use auto-refresh hook for smart article loading
+  const {
+    articles: recommendations,
+    pendingCount,
+    loading,
+    nextRefresh,
+    formatCountdown,
+    isAtTop,
+    manualRefresh,
+    applyPendingArticles,
+    updateArticleLocally
+  } = useAutoRefresh({
+    userId,
+    refreshInterval: 300, // 5 minutes
+    onNewArticles: (count) => {
+      if (!isAtTop) {
+        toast({
+          title: `${count} new articles available`,
+          description: "Click to load new stories",
+          action: (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={applyPendingArticles}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              <ArrowUp className="w-4 h-4 mr-1" />
+              Load New
+            </Button>
+          ),
+          duration: 10000, // Show for 10 seconds
+        })
+      }
+    },
+    onRefreshComplete: () => {
+      setLastRefresh(new Date())
+    }
+  })
 
   // Load bookmarks from localStorage
   useEffect(() => {
@@ -84,35 +122,6 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
     }
   }, [userId])
 
-  // Auto-refresh countdown timer
-  useEffect(() => {
-    const countdownInterval = setInterval(() => {
-      setNextRefresh(prev => {
-        if (prev <= 1) {
-          setLastRefresh(new Date())
-          return 300 // Reset to 5 minutes
-        }
-        return prev - 1
-      })
-    }, 1000)
-
-    return () => clearInterval(countdownInterval)
-  }, [])
-
-  // Update last refresh when recommendations change
-  useEffect(() => {
-    if (recommendations.length > 0) {
-      setLastRefresh(new Date())
-      setNextRefresh(300)
-    }
-  }, [recommendations])
-
-  // Format countdown time
-  const formatCountdown = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
 
   // Infinite scroll observer
   useEffect(() => {
@@ -179,6 +188,11 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
     startReadingTimer(article.id)
     broadcastActivity(userId, article.id, 'viewing')
     
+    // Update article locally to persist interaction during refresh
+    updateArticleLocally(article.id, { 
+      engagement_score: (article.engagement_score || 0) + 1 
+    })
+    
     // Open article in new tab after short delay to track view
     setTimeout(() => {
       if (article.url) {
@@ -189,9 +203,12 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
 
   const toggleBookmark = (articleId: string) => {
     const newBookmarks = new Set(bookmarks)
-    if (newBookmarks.has(articleId)) {
+    const isBookmarked = newBookmarks.has(articleId)
+    
+    if (isBookmarked) {
       newBookmarks.delete(articleId)
       trackInteraction(articleId, 'bookmark', -1)
+      updateArticleLocally(articleId, { bookmarked: false })
       toast({
         title: "Bookmark removed",
         description: "Article removed from bookmarks"
@@ -200,6 +217,10 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
       newBookmarks.add(articleId)
       trackInteraction(articleId, 'bookmark', 1)
       broadcastActivity(userId, articleId, 'bookmarking')
+      updateArticleLocally(articleId, { 
+        bookmarked: true,
+        engagement_score: (recommendations.find(a => a.id === articleId)?.engagement_score || 0) + 3 
+      })
       toast({
         title: "Bookmark added", 
         description: "Article saved to bookmarks"
@@ -211,6 +232,10 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
 
   const handleLike = (articleId: string) => {
     trackInteraction(articleId, 'like')
+    updateArticleLocally(articleId, { 
+      liked: true,
+      engagement_score: (recommendations.find(a => a.id === articleId)?.engagement_score || 0) + 2 
+    })
     toast({
       title: "Article liked",
       description: "This will improve your recommendations"
@@ -220,6 +245,10 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
   const handleShare = (articleId: string) => {
     trackInteraction(articleId, 'share')
     broadcastActivity(userId, articleId, 'sharing')
+    updateArticleLocally(articleId, { 
+      shared: true,
+      engagement_score: (recommendations.find(a => a.id === articleId)?.engagement_score || 0) + 5 
+    })
     // Copy URL to clipboard
     navigator.clipboard.writeText(window.location.origin + '/article/' + articleId)
     toast({
@@ -304,10 +333,20 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
               <div className="text-xs text-muted-foreground">
                 Last updated: {lastRefresh.toLocaleTimeString()}
               </div>
+              {pendingCount > 0 && !isAtTop && (
+                <Button 
+                  onClick={applyPendingArticles}
+                  variant="default" 
+                  size="sm" 
+                  className="hover-lift animate-pulse bg-primary text-primary-foreground"
+                >
+                  <ArrowUp className="w-4 h-4 mr-1" />
+                  {pendingCount} New Article{pendingCount > 1 ? 's' : ''}
+                </Button>
+              )}
               <Button 
                 onClick={() => {
-                  refreshRecommendations(true)
-                  setNextRefresh(300) // Reset countdown when manually refreshed
+                  manualRefresh()
                   toast({
                     title: "Feed refreshed",
                     description: "Latest articles loaded successfully"
@@ -318,7 +357,7 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
                 className="hover-lift"
                 disabled={loading}
               >
-                <Sparkles className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                 {loading ? 'Refreshing...' : 'Refresh Now'}
               </Button>
             </div>
