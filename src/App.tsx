@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import ViewerPage from "./pages/ViewerPage";
 import EditorPage from "./pages/EditorPage";
 import AdminPage from "./pages/AdminPage";
+import AdminContentDashboard from "./pages/AdminContentDashboard";
 
 const queryClient = new QueryClient();
 
@@ -26,8 +27,8 @@ const App = () => (
             <Route path="/viewer" element={<ViewerPage />} />
             <Route path="/editor" element={<EditorPage />} />
             <Route path="/admin" element={<AdminPage />} />
+            <Route path="/admin/content-quality" element={<AdminContentDashboard />} />
             <Route path="/auth" element={<AuthPage />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>

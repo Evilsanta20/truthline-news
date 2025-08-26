@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { usePersonalization } from '@/hooks/usePersonalization'
 import { useLiveUserActivity } from '@/hooks/useLiveUserActivity'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
+import FeedSettingsDrawer from './FeedSettingsDrawer'
 import { 
   TrendingUp, 
   Star, 
@@ -62,6 +63,12 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
   const [hasMore, setHasMore] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
+  const [balancedMode, setBalancedMode] = useState(true)
+  const [exploreRatio, setExploreRatio] = useState(0.25)
+  const [autoRefresh, setAutoRefresh] = useState(true)
+  const [refreshInterval, setRefreshInterval] = useState(300)
+  const [mutedTopics, setMutedTopics] = useState<string[]>([])
+  const [blockedSources, setBlockedSources] = useState<string[]>([])
   const loadMoreRef = useRef<HTMLDivElement>(null)
   
   const {
@@ -88,7 +95,7 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
     updateArticleLocally
   } = useAutoRefresh({
     userId,
-    refreshInterval: 300, // 5 minutes
+    refreshInterval: autoRefresh ? refreshInterval : 0, // Disable if autoRefresh is off
     onNewArticles: (count) => {
       if (!isAtTop) {
         toast({
@@ -317,50 +324,67 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
               <Target className="w-8 h-8 text-primary" />
               <span className="gradient-text">Your Personalized Feed</span>
             </h1>
-            <p className="text-muted-foreground mt-2 flex items-center gap-2">
-              <Globe className="w-4 h-4" />
-              {recommendations.length} articles tailored for you • Next refresh in {formatCountdown(nextRefresh)}
-              {isConnected && (
-                <span className="flex items-center gap-1 text-accent">
-                  <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
-                  Live ({liveStats.activeUsers} active)
-                </span>
-              )}
-            </p>
+              <p className="text-muted-foreground mt-2 flex items-center gap-2">
+                <Globe className="w-4 h-4" />
+                {recommendations.length} articles tailored for you
+                {autoRefresh && (
+                  <span>• Next refresh in {formatCountdown(nextRefresh)}</span>
+                )}
+                {isConnected && (
+                  <span className="flex items-center gap-1 text-accent">
+                    <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
+                    Live ({liveStats.activeUsers} active)
+                  </span>
+                )}
+              </p>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2">
-              <div className="text-xs text-muted-foreground">
-                Last updated: {lastRefresh.toLocaleTimeString()}
-              </div>
-              {pendingCount > 0 && !isAtTop && (
-                <Button 
-                  onClick={applyPendingArticles}
-                  variant="default" 
-                  size="sm" 
-                  className="hover-lift animate-pulse bg-primary text-primary-foreground"
-                >
-                  <ArrowUp className="w-4 h-4 mr-1" />
-                  {pendingCount} New Article{pendingCount > 1 ? 's' : ''}
-                </Button>
-              )}
-              <Button 
-                onClick={() => {
-                  manualRefresh()
-                  toast({
-                    title: "Feed refreshed",
-                    description: "Latest articles loaded successfully"
-                  })
-                }} 
-                variant="outline" 
-                size="sm" 
-                className="hover-lift"
-                disabled={loading}
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                {loading ? 'Refreshing...' : 'Refresh Now'}
-              </Button>
+          <div className="flex items-center gap-2">
+            <FeedSettingsDrawer
+              balancedMode={balancedMode}
+              onBalancedModeChange={setBalancedMode}
+              exploreRatio={exploreRatio}
+              onExploreRatioChange={setExploreRatio}
+              autoRefresh={autoRefresh}
+              onAutoRefreshChange={setAutoRefresh}
+              refreshInterval={refreshInterval}
+              onRefreshIntervalChange={setRefreshInterval}
+              mutedTopics={mutedTopics}
+              onMutedTopicsChange={setMutedTopics}
+              blockedSources={blockedSources}
+              onBlockedSourcesChange={setBlockedSources}
+            />
+            <div className="text-xs text-muted-foreground">
+              Last updated: {lastRefresh.toLocaleTimeString()}
             </div>
+            {pendingCount > 0 && !isAtTop && (
+              <Button 
+                onClick={applyPendingArticles}
+                variant="default" 
+                size="sm" 
+                className="hover-lift animate-pulse bg-primary text-primary-foreground"
+              >
+                <ArrowUp className="w-4 h-4 mr-1" />
+                {pendingCount} New Article{pendingCount > 1 ? 's' : ''}
+              </Button>
+            )}
+            <Button 
+              onClick={() => {
+                manualRefresh()
+                toast({
+                  title: "Feed refreshed",
+                  description: "Latest articles loaded successfully"
+                })
+              }} 
+              variant="outline" 
+              size="sm" 
+              className="hover-lift"
+              disabled={loading}
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              {loading ? 'Refreshing...' : 'Refresh Now'}
+            </Button>
+          </div>
             <Button
               onClick={() => window.location.reload()}
               variant="ghost"

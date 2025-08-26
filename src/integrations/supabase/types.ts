@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      aggregation_logs: {
+        Row: {
+          created_at: string
+          execution_time: string
+          id: string
+          log_level: string
+          results: Json
+          source_function: string
+          success_rate: number | null
+        }
+        Insert: {
+          created_at?: string
+          execution_time?: string
+          id?: string
+          log_level?: string
+          results?: Json
+          source_function: string
+          success_rate?: number | null
+        }
+        Update: {
+          created_at?: string
+          execution_time?: string
+          id?: string
+          log_level?: string
+          results?: Json
+          source_function?: string
+          success_rate?: number | null
+        }
+        Relationships: []
+      }
       article_interactions: {
         Row: {
           article_id: string
@@ -50,6 +80,7 @@ export type Database = {
           category_id: string | null
           content: string | null
           content_embedding: string | null
+          content_hash: string | null
           content_quality_score: number | null
           created_at: string
           created_by: string | null
@@ -61,6 +92,7 @@ export type Database = {
           is_featured: boolean | null
           is_trending: boolean | null
           polarization_score: number | null
+          processing_notes: string | null
           published_at: string | null
           reading_time_minutes: number | null
           sentiment_score: number | null
@@ -81,6 +113,7 @@ export type Database = {
           category_id?: string | null
           content?: string | null
           content_embedding?: string | null
+          content_hash?: string | null
           content_quality_score?: number | null
           created_at?: string
           created_by?: string | null
@@ -92,6 +125,7 @@ export type Database = {
           is_featured?: boolean | null
           is_trending?: boolean | null
           polarization_score?: number | null
+          processing_notes?: string | null
           published_at?: string | null
           reading_time_minutes?: number | null
           sentiment_score?: number | null
@@ -112,6 +146,7 @@ export type Database = {
           category_id?: string | null
           content?: string | null
           content_embedding?: string | null
+          content_hash?: string | null
           content_quality_score?: number | null
           created_at?: string
           created_by?: string | null
@@ -123,6 +158,7 @@ export type Database = {
           is_featured?: boolean | null
           is_trending?: boolean | null
           polarization_score?: number | null
+          processing_notes?: string | null
           published_at?: string | null
           reading_time_minutes?: number | null
           sentiment_score?: number | null
@@ -255,6 +291,45 @@ export type Database = {
           id?: string
           name?: string
           slug?: string
+        }
+        Relationships: []
+      }
+      content_quality_config: {
+        Row: {
+          bias_threshold: number | null
+          config_name: string
+          created_at: string
+          id: string
+          min_content_quality: number | null
+          min_credibility: number | null
+          min_factuality: number | null
+          sensationalism_threshold: number | null
+          toxicity_threshold: number | null
+          updated_at: string
+        }
+        Insert: {
+          bias_threshold?: number | null
+          config_name: string
+          created_at?: string
+          id?: string
+          min_content_quality?: number | null
+          min_credibility?: number | null
+          min_factuality?: number | null
+          sensationalism_threshold?: number | null
+          toxicity_threshold?: number | null
+          updated_at?: string
+        }
+        Update: {
+          bias_threshold?: number | null
+          config_name?: string
+          created_at?: string
+          id?: string
+          min_content_quality?: number | null
+          min_credibility?: number | null
+          min_factuality?: number | null
+          sensationalism_threshold?: number | null
+          toxicity_threshold?: number | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -537,6 +612,10 @@ export type Database = {
       binary_quantize: {
         Args: { "": string } | { "": unknown }
         Returns: unknown
+      }
+      cleanup_old_logs: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       get_user_role: {
         Args: { _user_id: string }
