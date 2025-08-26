@@ -2,12 +2,57 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Play, Sparkles, Home, TrendingUp, Bookmark, Globe, List, Video, RotateCcw } from 'lucide-react'
+import { Play, Sparkles, Home, TrendingUp, Bookmark, Globe, List, Video, RotateCcw, LogIn, User, LogOut } from 'lucide-react'
 import { EnhancedPersonalizedFeed } from '@/components/news/EnhancedPersonalizedFeed'
 import { useAuth } from '@/hooks/useAuth'
+import { Link } from 'react-router-dom'
 
 export default function Index() {
   const [activeTab, setActiveTab] = useState('home')
+  const { user, loading, signOut } = useAuth()
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading your personalized feed...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show auth prompt if not logged in
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
+        <div className="text-center max-w-2xl mx-auto">
+          <div className="mx-auto w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6">
+            <Globe className="w-10 h-10 text-primary" />
+          </div>
+          <h1 className="text-4xl font-bold text-foreground mb-4">Welcome to NewsDigest AI</h1>
+          <p className="text-xl text-muted-foreground mb-8">
+            Get personalized news recommendations powered by AI. 
+            Track your reading habits and discover content tailored just for you.
+          </p>
+          <div className="flex gap-4 justify-center">
+            <Link to="/auth">
+              <Button className="bg-primary hover:bg-primary/90" size="lg">
+                <LogIn className="w-5 h-5 mr-2" />
+                Sign In / Sign Up
+              </Button>
+            </Link>
+          </div>
+          <div className="mt-8 text-sm text-muted-foreground">
+            <p>✨ AI-powered recommendations</p>
+            <p>📊 Reading analytics & insights</p>
+            <p>🔖 Bookmark your favorite articles</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -42,14 +87,29 @@ export default function Index() {
                 />
                 <h2 className="text-lg font-semibold text-foreground">AI News Digest</h2>
               </div>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => window.location.reload()}
-                className="hover:bg-primary/10"
-              >
-                <RotateCcw className="w-4 h-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <User className="w-4 h-4" />
+                  <span>{user.email}</span>
+                </div>
+                <Button 
+                  onClick={signOut}
+                  variant="ghost" 
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <LogOut className="w-4 h-4 mr-1" />
+                  Sign Out
+                </Button>
+                <Button 
+                  onClick={() => window.location.reload()}
+                  variant="ghost" 
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
             <TabsList className="grid w-full grid-cols-7 h-12 bg-transparent border-0 rounded-none">
               <TabsTrigger 
@@ -105,11 +165,11 @@ export default function Index() {
             </TabsList>
 
             <TabsContent value="personalized" className="mt-0 p-0">
-              <EnhancedPersonalizedFeed userId="demo-user" />
+              <EnhancedPersonalizedFeed userId={user.id} />
             </TabsContent>
 
             <TabsContent value="home" className="mt-0 p-0">
-              <EnhancedPersonalizedFeed userId="demo-user" />
+              <EnhancedPersonalizedFeed userId={user.id} />
             </TabsContent>
 
             <TabsContent value="trending" className="mt-0 p-0">
@@ -148,7 +208,7 @@ export default function Index() {
               <div className="p-8 text-center">
                 <Video className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-foreground mb-2">News Reels</h3>
-                <p className="text-muted-foreground">TikTok-style news experience - Coming Soon!</p>
+                <p className="text-muted-foregreen">TikTok-style news experience - Coming Soon!</p>
                 <Badge className="mt-2 bg-accent text-accent-foreground">New Feature</Badge>
               </div>
             </TabsContent>

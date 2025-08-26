@@ -13,7 +13,7 @@ import { Shield, Users, FileText, Eye, Edit, Trash2, CheckCircle, XCircle } from
 import { Navigate } from 'react-router-dom'
 
 export default function AdminDashboard() {
-  const { user, profile, hasRole, loading } = useAuth()
+  const { user, loading } = useAuth()
   const { toast } = useToast()
   const [users, setUsers] = useState<any[]>([])
   const [articles, setArticles] = useState<any[]>([])

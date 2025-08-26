@@ -7,26 +7,10 @@ import { Badge } from '@/components/ui/badge'
 import { Newspaper, Search, User, Settings, LogOut, PenTool, Shield, BookOpen } from 'lucide-react'
 
 export const Navbar = () => {
-  const { user, profile, signOut, hasRole } = useAuth()
+  const { user, signOut } = useAuth()
   const location = useLocation()
 
   const isActive = (path: string) => location.pathname === path
-
-  const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case 'admin': return 'bg-destructive text-destructive-foreground'
-      case 'editor': return 'bg-primary text-primary-foreground'
-      default: return 'bg-secondary text-secondary-foreground'
-    }
-  }
-
-  const getRoleIcon = (role: string) => {
-    switch (role) {
-      case 'admin': return <Shield className="w-3 h-3" />
-      case 'editor': return <PenTool className="w-3 h-3" />
-      default: return <BookOpen className="w-3 h-3" />
-    }
-  }
 
   return (
     <nav className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
@@ -49,34 +33,6 @@ export const Navbar = () => {
               >
                 Home
               </Link>
-              <Link 
-                to="/bookmarks" 
-                className={`text-sm font-medium transition-colors hover:text-primary ${
-                  isActive('/bookmarks') ? 'text-primary' : 'text-muted-foreground'
-                }`}
-              >
-                Bookmarks
-              </Link>
-              {hasRole('editor') && (
-                <Link 
-                  to="/editor" 
-                  className={`text-sm font-medium transition-colors hover:text-primary ${
-                    isActive('/editor') ? 'text-primary' : 'text-muted-foreground'
-                  }`}
-                >
-                  Editor
-                </Link>
-              )}
-              {hasRole('admin') && (
-                <Link 
-                  to="/admin" 
-                  className={`text-sm font-medium transition-colors hover:text-primary ${
-                    isActive('/admin') ? 'text-primary' : 'text-muted-foreground'
-                  }`}
-                >
-                  Admin
-                </Link>
-              )}
             </div>
           )}
 
@@ -92,9 +48,8 @@ export const Navbar = () => {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                       <Avatar className="h-10 w-10">
-                        <AvatarImage src={profile?.avatar_url || ''} alt={profile?.full_name || ''} />
                         <AvatarFallback className="bg-primary text-primary-foreground">
-                          {profile?.full_name?.charAt(0) || user.email?.charAt(0)?.toUpperCase()}
+                          {user.email?.charAt(0)?.toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                     </Button>
@@ -102,33 +57,12 @@ export const Navbar = () => {
                   <DropdownMenuContent className="w-56" align="end" forceMount>
                     <div className="flex items-center justify-start gap-2 p-2">
                       <div className="flex flex-col space-y-1 leading-none">
-                        <p className="font-medium">{profile?.full_name || user.email}</p>
+                        <p className="font-medium">{user.email}</p>
                         <p className="w-[200px] truncate text-sm text-muted-foreground">
                           {user.email}
                         </p>
-                        <Badge 
-                          className={`w-fit text-xs ${getRoleBadgeColor(profile?.role || 'viewer')}`}
-                        >
-                          <span className="flex items-center gap-1">
-                            {getRoleIcon(profile?.role || 'viewer')}
-                            {profile?.role || 'viewer'}
-                          </span>
-                        </Badge>
                       </div>
                     </div>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link to="/profile" className="cursor-pointer">
-                        <User className="mr-2 h-4 w-4" />
-                        Profile
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/settings" className="cursor-pointer">
-                        <Settings className="mr-2 h-4 w-4" />
-                        Settings
-                      </Link>
-                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={signOut} className="cursor-pointer">
                       <LogOut className="mr-2 h-4 w-4" />

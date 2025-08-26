@@ -15,7 +15,7 @@ import { PenTool, Eye, Edit, Trash2, Plus } from 'lucide-react'
 import { Navigate } from 'react-router-dom'
 
 export default function EditorDashboard() {
-  const { user, profile, hasRole, loading } = useAuth()
+  const { user, loading } = useAuth()
   const { toast } = useToast()
   const [articles, setArticles] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
