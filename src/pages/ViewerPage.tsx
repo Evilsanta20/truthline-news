@@ -292,7 +292,7 @@ export default function ViewerPage() {
       </header>
 
       {/* Enhanced Personalized Feed */}
-      <EnhancedPersonalizedFeed userId={userId} />
+            <EnhancedPersonalizedFeed userId={userId} />
     </div>
   )
 }
