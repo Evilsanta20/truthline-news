@@ -16,22 +16,42 @@ export interface UserPreferences {
 export interface PersonalizedArticle {
   id: string
   title: string
-  description: string
-  content: string
-  category_id: string
-  source_name: string
+  description?: string
+  content?: string
+  category_id?: string
+  source_id?: string
+  source_name?: string
+  author?: string
   url: string
-  topic_tags: string[]
-  engagement_score: number
+  url_to_image?: string
+  published_at?: string
+  topic_tags?: string[]
+  engagement_score?: number
   recommendation_score: number
-  categories: {
+  categories?: {
     name: string
     slug: string
     color: string
   }
-  is_featured: boolean
-  is_trending: boolean
+  is_featured?: boolean
+  is_trending?: boolean
+  is_editors_pick?: boolean
+  view_count?: number
+  created_by?: string
   created_at: string
+  updated_at?: string
+  reading_time_minutes?: number
+  content_quality_score?: number
+  credibility_score?: number
+  bias_score?: number
+  sentiment_score?: number
+  polarization_score?: number
+  ai_summary?: string
+  ai_processed_at?: string
+  content_embedding?: any
+  content_hash?: string
+  processing_notes?: string
+  match_reasons?: string[]
 }
 
 export const usePersonalization = (userId: string) => {
