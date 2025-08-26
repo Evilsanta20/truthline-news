@@ -62,6 +62,24 @@ verify_jwt = false
 [functions.enhanced-news-aggregator]
 verify_jwt = false
 
+[functions.ai-personalized-recommendations]
+verify_jwt = false
+
+[functions.enhanced-content-analyzer]
+verify_jwt = false
+
+[functions.multi-source-news-aggregator]
+verify_jwt = false
+
+[functions.generate-dynamic-articles]
+verify_jwt = false
+
+[functions.process-user-feedback]
+verify_jwt = false
+
+[functions.ai-content-analysis]
+verify_jwt = false
+
 [edge_runtime]
 policy = "per_function"
 inspector_port = 54330

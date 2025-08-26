@@ -56,10 +56,10 @@ serve(async (req) => {
       // For incremental updates - get articles published after since timestamp
       articleQuery = articleQuery.gte('published_at', since);
     } else {
-      // For initial load - get articles from last 7 days
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      articleQuery = articleQuery.gte('created_at', sevenDaysAgo.toISOString());
+      // For initial load - get articles from last 30 days (more lenient for demo)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      articleQuery = articleQuery.gte('created_at', thirtyDaysAgo.toISOString());
     }
 
     // Apply content quality filters
@@ -73,9 +73,27 @@ serve(async (req) => {
       articleQuery = articleQuery.not('topic_tags', 'cs', `{${mutedTopics.join(',')}}`);
     }
 
-    const { data: articles } = await articleQuery
+    let { data: articles } = await articleQuery
       .order(since ? 'published_at' : 'created_at', { ascending: false })
       .limit(since ? 100 : 300);
+
+    // If no articles found with date filter, try without date filter as fallback
+    if (!articles || articles.length === 0) {
+      console.log('No articles found with date filter, trying fallback query...');
+      const { data: fallbackArticles } = await supabase
+        .from('articles')
+        .select(`
+          *,
+          categories (name, color)
+        `)
+        .gte('content_quality_score', 0.3)
+        .gte('credibility_score', 0.2)
+        .lte('bias_score', 0.9)
+        .order('created_at', { ascending: false })
+        .limit(100);
+      
+      articles = fallbackArticles;
+    }
 
     if (!articles || articles.length === 0) {
       return new Response(

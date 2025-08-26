@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { usePersonalization } from '@/hooks/usePersonalization'
 import { useLiveUserActivity } from '@/hooks/useLiveUserActivity'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
+import { generateDynamicArticles } from '@/utils/seedArticles'
 import FeedSettingsDrawer from './FeedSettingsDrawer'
 import { 
   TrendingUp, 
@@ -69,6 +70,7 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
   const [refreshInterval, setRefreshInterval] = useState(300)
   const [mutedTopics, setMutedTopics] = useState<string[]>([])
   const [blockedSources, setBlockedSources] = useState<string[]>([])
+  const [generatingArticles, setGeneratingArticles] = useState(false)
   const loadMoreRef = useRef<HTMLDivElement>(null)
   
   const {
@@ -278,6 +280,28 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
     }
   }
 
+  const generateFreshArticles = async () => {
+    try {
+      setGeneratingArticles(true);
+      const result = await generateDynamicArticles(15);
+      toast({
+        title: "Articles Generated!",
+        description: `Created ${result.generated_count} fresh articles`,
+      });
+      // Refresh recommendations after generating articles
+      manualRefresh();
+    } catch (error) {
+      console.error('Error generating articles:', error);
+      toast({
+        title: "Generation Failed",
+        description: "Could not generate new articles. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingArticles(false);
+    }
+  };
+
   const filteredRecommendations = recommendations.filter(article => {
     const matchesSearch = searchQuery === '' || 
       article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -383,6 +407,16 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
             >
               <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
               {loading ? 'Refreshing...' : 'Refresh Now'}
+            </Button>
+            <Button
+              onClick={generateFreshArticles}
+              variant="default"
+              size="sm"
+              className="hover-lift bg-accent text-accent-foreground hover:bg-accent/90"
+              disabled={generatingArticles}
+            >
+              <Sparkles className={`w-4 h-4 mr-2 ${generatingArticles ? 'animate-spin' : ''}`} />
+              {generatingArticles ? 'Generating...' : 'Generate Fresh'}
             </Button>
           </div>
             <Button
