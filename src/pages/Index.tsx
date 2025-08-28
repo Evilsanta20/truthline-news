@@ -208,7 +208,7 @@ export default function Index() {
               <div className="p-8 text-center">
                 <Video className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-foreground mb-2">News Reels</h3>
-                <p className="text-muted-foregreen">TikTok-style news experience - Coming Soon!</p>
+                <p className="text-muted-foreground">TikTok-style news experience - Coming Soon!</p>
                 <Badge className="mt-2 bg-accent text-accent-foreground">New Feature</Badge>
               </div>
             </TabsContent>

@@ -280,8 +280,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Also fetch general trending news
-    if (category === 'general' || category === 'trending') {
+    // Also fetch general trending news if needed
+    if ((category === 'general' || category === 'trending') && newsApiKey && allArticles.length < limit) {
       try {
         const trendingUrl = `https://newsapi.org/v2/top-headlines?apiKey=${newsApiKey}&country=us&pageSize=15`
         const trendingResponse = await fetch(trendingUrl)
@@ -319,103 +319,71 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Remove duplicates based on URL
+    // Remove duplicates and sort by freshness (publication date)
     const uniqueArticles = allArticles.filter((article, index, self) => 
       index === self.findIndex(a => a.url === article.url)
-    )
+    ).sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
 
-    // Sort by publication date (newest first)
-    uniqueArticles.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
+    console.log(`Total unique articles collected: ${uniqueArticles.length}`)
 
-    // Store in database
+    // Store fresh articles in database
     const processedArticles = []
     for (const article of uniqueArticles.slice(0, limit)) {
       try {
-        // Check if article exists
+        // Generate content hash for duplicate detection
+        const contentHash = await generateContentHash(article.title + article.description);
+        
+        // Check if article already exists by content hash
         const { data: existingArticle } = await supabaseClient
           .from('articles')
           .select('id')
-          .eq('url', article.url)
+          .eq('content_hash', contentHash)
           .single()
 
         if (!existingArticle || forceRefresh) {
-          // Get or create category
-          const { data: categoryData } = await supabaseClient
-            .from('categories')
-            .select('id')
-            .eq('slug', article.category)
-            .single()
-
-          // Get or create source
-          let sourceId = null
-          if (article.sourceName) {
-            const { data: existingSource } = await supabaseClient
-              .from('sources')
-              .select('id')
-              .eq('name', article.sourceName)
-              .single()
-
-            if (existingSource) {
-              sourceId = existingSource.id
-            } else {
-              const { data: newSource } = await supabaseClient
-                .from('sources')
-                .insert({
-                  name: article.sourceName,
-                  url: new URL(article.url).origin,
-                  category: article.category
-                })
-                .select('id')
-                .single()
-              
-              sourceId = newSource?.id
-            }
-          }
-
           const articleData = {
-            title: article.title,
-            description: article.description,
+            title: article.title.substring(0, 500),
+            description: article.description?.substring(0, 1000),
             content: article.content,
             url: article.url,
             url_to_image: article.urlToImage,
-            source_id: sourceId,
             source_name: article.sourceName,
             author: article.author,
-            category_id: categoryData?.id,
             published_at: article.publishedAt,
             topic_tags: article.tags,
-            is_trending: article.category === 'trending' || Math.random() > 0.7,
-            is_editors_pick: Math.random() > 0.8,
-            engagement_score: Math.floor(Math.random() * 1000) + 100
+            content_hash: contentHash,
+            reading_time_minutes: Math.max(1, Math.ceil((article.content || article.description || '').split(' ').length / 200)),
+            content_quality_score: calculateQualityScore(article.title, article.content, article.description),
+            sentiment_score: 0.5,
+            credibility_score: getSourceCredibilityScore(article.sourceName),
+            engagement_score: Math.floor(Math.random() * 100) + 50,
+            is_trending: Math.random() > 0.8,
+            is_featured: Math.random() > 0.9
           }
 
-          if (existingArticle) {
-            // Update existing
-            const { data: updatedArticle } = await supabaseClient
+          if (existingArticle && forceRefresh) {
+            // Update existing article
+            const { data: updatedArticle, error } = await supabaseClient
               .from('articles')
               .update(articleData)
               .eq('id', existingArticle.id)
-              .select(`
-                *,
-                categories (name, slug, color),
-                sources (name, url)
-              `)
+              .select()
               .single()
-              
-            if (updatedArticle) processedArticles.push(updatedArticle)
-          } else {
-            // Insert new
-            const { data: newArticle } = await supabaseClient
+            
+            if (!error && updatedArticle) {
+              processedArticles.push(updatedArticle)
+            }
+          } else if (!existingArticle) {
+            // Insert new article
+            const { data: newArticle, error } = await supabaseClient
               .from('articles')
               .insert(articleData)
-              .select(`
-                *,
-                categories (name, slug, color),
-                sources (name, url)
-              `)
+              .select()
               .single()
-              
-            if (newArticle) processedArticles.push(newArticle)
+            
+            if (!error && newArticle) {
+              processedArticles.push(newArticle)
+            }
           }
         }
       } catch (error) {
@@ -451,6 +419,44 @@ Deno.serve(async (req) => {
   }
 })
 
+function calculateQualityScore(title: string, content: string, description?: string): number {
+  let score = 0.5; // Base score
+  
+  // Length factors - reward substantial content
+  if (content && content.length > 500) score += 0.1;
+  if (content && content.length > 1500) score += 0.1;
+  if (title && title.length > 20 && title.length < 100) score += 0.1;
+  
+  // Content quality indicators
+  if (description && description.length > 50) score += 0.1;
+  if (content && (content.includes('According to') || content.includes('reported'))) score += 0.1;
+  if (title && !title.includes('BREAKING') && !title.includes('!!!')) score += 0.1;
+  
+  // Freshness bonus for real-time content
+  score += 0.15;
+  
+  return Math.min(1.0, score);
+}
+
+function getSourceCredibilityScore(sourceName: string): number {
+  const highCredibility = ['Reuters', 'Associated Press', 'BBC', 'NPR', 'PBS', 'Wall Street Journal', 'Financial Times', 'The Guardian'];
+  const mediumCredibility = ['CNN', 'CNBC', 'Bloomberg', 'TechCrunch', 'The Verge', 'ESPN', 'Medical News Today', 'NewsAPI'];
+  
+  const source = sourceName.toLowerCase();
+  
+  if (highCredibility.some(s => source.includes(s.toLowerCase()))) return 0.9;
+  if (mediumCredibility.some(s => source.includes(s.toLowerCase()))) return 0.7;
+  return 0.5;
+}
+
+async function generateContentHash(content: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(content);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
+}
+
 // Helper function to extract relevant tags from text
 function extractTags(text: string): string[] {
   const commonTags = [
@@ -469,7 +475,7 @@ function extractTags(text: string): string[] {
 function mapCategoryToNewsApi(category: string): string {
   const mapping: { [key: string]: string } = {
     'general': 'general',
-    'technology': 'technology',
+    'technology': 'technology', 
     'business': 'business',
     'health': 'health',
     'sports': 'sports',
