@@ -146,29 +146,29 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { searchParams } = new URL(req.url)
-    const category = searchParams.get('category') || 'general'
-    const limit = parseInt(searchParams.get('limit') || '50')
-    const forceRefresh = searchParams.get('refresh') === 'true'
+    let requestBody: any = {};
+    if (req.method === 'POST') {
+      requestBody = await req.json();
+    }
+    
+    const category = requestBody.category || 'general'
+    const limit = parseInt(requestBody.limit || '50')
+    const forceRefresh = requestBody.forceRefresh || false
 
     const newsApiKey = Deno.env.get('NEWS_API_KEY')
-    if (!newsApiKey) {
-      throw new Error('NEWS_API_KEY is not configured')
-    }
+    const guardianApiKey = Deno.env.get('GUARDIAN_API_KEY')
 
     console.log(`Enhanced news aggregation: category=${category}, limit=${limit}, forceRefresh=${forceRefresh}`)
 
     const allArticles: AggregatedArticle[] = []
 
-    // Fetch from multiple sources for the category
-    const sources = NEWS_SOURCES[category as keyof typeof NEWS_SOURCES] || ['reuters', 'bbc-news', 'cnn']
-    
-    // Fetch from each source
-    for (const source of sources.slice(0, 3)) { // Limit to 3 sources per category for performance
+    // 1. Try NewsAPI first (most reliable)
+    if (newsApiKey) {
       try {
-        const newsApiUrl = `https://newsapi.org/v2/top-headlines?apiKey=${newsApiKey}&sources=${source}&pageSize=10`
+        const newsApiCategory = mapCategoryToNewsApi(category);
+        const newsApiUrl = `https://newsapi.org/v2/top-headlines?apiKey=${newsApiKey}&category=${newsApiCategory}&pageSize=${Math.min(limit, 50)}&language=en&sortBy=publishedAt`
         
-        console.log(`Fetching from source: ${source}`)
+        console.log(`Fetching from NewsAPI: ${newsApiCategory}`)
         const response = await fetch(newsApiUrl)
         
         if (response.ok) {
@@ -176,8 +176,7 @@ Deno.serve(async (req) => {
           
           if (data.articles) {
             for (const article of data.articles) {
-              if (article.title && article.title !== '[Removed]' && article.url) {
-                // AI-powered categorization and tag extraction
+              if (article.title && article.title !== '[Removed]' && article.url && article.description) {
                 const content = article.content || article.description || '';
                 const [aiCategory, aiTags] = await Promise.all([
                   categorizeWithAI(article.title, content),
@@ -190,19 +189,94 @@ Deno.serve(async (req) => {
                   content: content,
                   url: article.url,
                   urlToImage: article.urlToImage,
-                  sourceName: article.source?.name || source,
+                  sourceName: article.source?.name || 'NewsAPI',
                   author: article.author,
-                  category: aiCategory, // Use AI-determined category
-                  publishedAt: article.publishedAt,
-                  tags: aiTags // Use AI-extracted tags
+                  category: aiCategory,
+                  publishedAt: article.publishedAt || new Date().toISOString(),
+                  tags: aiTags
                 })
               }
             }
+            console.log(`NewsAPI: Retrieved ${allArticles.length} articles`)
+          }
+        } else {
+          console.warn(`NewsAPI error: ${response.status} - ${await response.text()}`)
+        }
+      } catch (error) {
+        console.error('NewsAPI failed:', error)
+      }
+    }
+
+    // 2. Try Guardian API as fallback
+    if (guardianApiKey && allArticles.length < limit / 2) {
+      try {
+        const guardianSection = mapCategoryToGuardian(category);
+        const guardianUrl = `https://content.guardianapis.com/search?api-key=${guardianApiKey}&section=${guardianSection}&page-size=${Math.min(20, limit)}&show-fields=headline,byline,thumbnail,short-url,body&order-by=newest`
+        
+        console.log(`Fetching from Guardian: ${guardianSection}`)
+        const response = await fetch(guardianUrl)
+        
+        if (response.ok) {
+          const data = await response.json()
+          
+          if (data.response?.results) {
+            for (const article of data.response.results) {
+              if (article.webTitle && article.webUrl) {
+                const content = article.fields?.body || article.fields?.headline || '';
+                const [aiCategory, aiTags] = await Promise.all([
+                  categorizeWithAI(article.webTitle, content),
+                  extractTagsWithAI(article.webTitle, content)
+                ]);
+                
+                allArticles.push({
+                  title: article.webTitle,
+                  description: content.substring(0, 300) + '...',
+                  content: content,
+                  url: article.webUrl,
+                  urlToImage: article.fields?.thumbnail,
+                  sourceName: 'The Guardian',
+                  author: article.fields?.byline,
+                  category: aiCategory,
+                  publishedAt: article.webPublicationDate || new Date().toISOString(),
+                  tags: aiTags
+                })
+              }
+            }
+            console.log(`Guardian: Retrieved ${data.response.results.length} additional articles`)
+          }
+        } else {
+          console.warn(`Guardian API error: ${response.status}`)
+        }
+      } catch (error) {
+        console.error('Guardian API failed:', error)
+      }
+    }
+
+    // 3. Try RSS feeds as final fallback
+    if (allArticles.length < 10) {
+      try {
+        const rssFeeds = getRSSFeeds(category);
+        for (const feed of rssFeeds.slice(0, 2)) {
+          try {
+            console.log(`Fetching RSS: ${feed.source}`)
+            const rssResponse = await fetch(feed.url, {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (compatible; NewsAggregator/1.0)'
+              }
+            });
+            
+            if (rssResponse.ok) {
+              const rssText = await rssResponse.text();
+              const rssArticles = await parseRSSFeed(rssText, feed.source);
+              allArticles.push(...rssArticles.slice(0, 8));
+              console.log(`RSS ${feed.source}: Retrieved ${rssArticles.length} articles`)
+            }
+          } catch (error) {
+            console.warn(`RSS ${feed.source} failed:`, error)
           }
         }
       } catch (error) {
-        console.error(`Error fetching from ${source}:`, error)
-        continue
+        console.warn('RSS feeds failed:', error)
       }
     }
 
@@ -355,9 +429,10 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({
       success: true,
       articles: processedArticles,
-      total: processedArticles.length,
-      sources: sources,
-      category: category
+      total_processed: processedArticles.length,
+      sources: ['NewsAPI', 'Guardian API', 'RSS', 'Firecrawl'],
+      category: category,
+      timestamp: new Date().toISOString()
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
@@ -389,4 +464,109 @@ function extractTags(text: string): string[] {
   
   const lowerText = text.toLowerCase()
   return commonTags.filter(tag => lowerText.includes(tag))
+}
+
+function mapCategoryToNewsApi(category: string): string {
+  const mapping: { [key: string]: string } = {
+    'general': 'general',
+    'technology': 'technology',
+    'business': 'business',
+    'health': 'health',
+    'sports': 'sports',
+    'entertainment': 'entertainment',
+    'science': 'science',
+    'politics': 'general'
+  };
+  
+  return mapping[category] || 'general';
+}
+
+function mapCategoryToGuardian(category: string): string {
+  const mapping: { [key: string]: string } = {
+    'general': 'world',
+    'technology': 'technology',
+    'business': 'business',
+    'health': 'society',
+    'sports': 'sport',
+    'entertainment': 'culture',
+    'science': 'science',
+    'politics': 'politics'
+  };
+  
+  return mapping[category] || 'world';
+}
+
+function getRSSFeeds(category: string) {
+  const feeds = {
+    general: [
+      { url: 'https://feeds.reuters.com/reuters/topNews', source: 'Reuters' },
+      { url: 'https://feeds.bbci.co.uk/news/rss.xml', source: 'BBC News' }
+    ],
+    technology: [
+      { url: 'https://feeds.feedburner.com/TechCrunch', source: 'TechCrunch' },
+      { url: 'https://www.theverge.com/rss/index.xml', source: 'The Verge' }
+    ],
+    business: [
+      { url: 'https://feeds.reuters.com/reuters/businessNews', source: 'Reuters Business' }
+    ],
+    sports: [
+      { url: 'https://feeds.bbci.co.uk/sport/rss.xml', source: 'BBC Sport' }
+    ],
+    health: [
+      { url: 'https://feeds.reuters.com/reuters/health', source: 'Reuters Health' }
+    ]
+  };
+
+  return feeds[category as keyof typeof feeds] || feeds.general;
+}
+
+async function parseRSSFeed(rssText: string, sourceName: string) {
+  const articles: AggregatedArticle[] = [];
+  
+  try {
+    const itemMatches = rssText.match(/<item[^>]*>(.*?)<\/item>/gs);
+    if (!itemMatches) return articles;
+    
+    for (const itemXml of itemMatches.slice(0, 10)) {
+      try {
+        const title = itemXml.match(/<title[^>]*><!\[CDATA\[(.*?)\]\]><\/title>|<title[^>]*>(.*?)<\/title>/s)?.[1] || itemXml.match(/<title[^>]*>(.*?)<\/title>/s)?.[1];
+        const description = itemXml.match(/<description[^>]*><!\[CDATA\[(.*?)\]\]><\/description>|<description[^>]*>(.*?)<\/description>/s)?.[1] || itemXml.match(/<description[^>]*>(.*?)<\/description>/s)?.[1];
+        const link = itemXml.match(/<link[^>]*>(.*?)<\/link>/s)?.[1];
+        const pubDate = itemXml.match(/<pubDate[^>]*>(.*?)<\/pubDate>/s)?.[1];
+        
+        if (!title || !description) continue;
+        
+        const cleanTitle = title.replace(/<[^>]*>/g, '').trim();
+        const cleanDescription = description.replace(/<[^>]*>/g, '').trim();
+        
+        if (cleanTitle.length < 10 || cleanDescription.length < 50) continue;
+        
+        const publishedAt = pubDate ? new Date(pubDate).toISOString() : new Date().toISOString();
+        
+        const [aiCategory, aiTags] = await Promise.all([
+          categorizeWithAI(cleanTitle, cleanDescription),
+          extractTagsWithAI(cleanTitle, cleanDescription)
+        ]);
+        
+        articles.push({
+          title: cleanTitle,
+          description: cleanDescription,
+          content: cleanDescription,
+          url: link || '',
+          urlToImage: null,
+          sourceName: sourceName,
+          author: null,
+          category: aiCategory,
+          publishedAt: publishedAt,
+          tags: aiTags
+        });
+      } catch (error) {
+        console.error('Error parsing RSS item:', error);
+      }
+    }
+  } catch (error) {
+    console.error('Error parsing RSS feed:', error);
+  }
+  
+  return articles;
 }

@@ -282,41 +282,46 @@ export const useFeed = (
     try {
       setLoading(true)
       
-      // Try Firecrawl first (more reliable), then fallback to regular APIs
-      console.log('Fetching fresh news from real sources...')
+      console.log('Fetching fresh news from multiple reliable sources...')
       
-      const categories = ['general', 'technology', 'business', 'health', 'sports']
+      const categories = ['general', 'technology', 'business', 'health', 'sports', 'politics']
       let totalFetched = 0
       
+      // Use enhanced aggregator which now includes NewsAPI, RSS, and Firecrawl
       for (const category of categories) {
         try {
-          // Try Firecrawl first
-          const firecrawlResult = await fetchNewsWithFirecrawl(category, 8)
-          if (firecrawlResult.articles_count > 0) {
-            totalFetched += firecrawlResult.articles_count
-            console.log(`Firecrawl fetched ${firecrawlResult.articles_count} articles for ${category}`)
-            continue // Skip fallback if Firecrawl worked
-          }
-        } catch (error) {
-          console.warn(`Firecrawl failed for ${category}, trying fallback:`, error)
-        }
-        
-        // Fallback to enhanced news aggregator
-        try {
-          await supabase.functions.invoke('enhanced-news-aggregator', {
+          const result = await supabase.functions.invoke('enhanced-news-aggregator', {
             body: { 
               category, 
-              limit: 10, 
+              limit: 15,
               refresh: true,
               forceRefresh: true 
             }
           })
+          
+          if (result.data?.total_processed > 0) {
+            totalFetched += result.data.total_processed
+            console.log(`Enhanced aggregator: ${result.data.total_processed} articles for ${category}`)
+          }
         } catch (error) {
-          console.warn(`Failed to fetch ${category} news:`, error)
+          console.warn(`Enhanced aggregator failed for ${category}:`, error)
+          
+          // Fallback to Firecrawl
+          try {
+            const firecrawlResult = await fetchNewsWithFirecrawl(category, 8)
+            if (firecrawlResult.articles_count > 0) {
+              totalFetched += firecrawlResult.articles_count
+              console.log(`Firecrawl fallback: ${firecrawlResult.articles_count} articles for ${category}`)
+            }
+          } catch (fcError) {
+            console.warn(`Firecrawl fallback failed for ${category}:`, fcError)
+          }
         }
       }
       
-      // Refresh after fetching real news
+      console.log(`Total fresh articles fetched: ${totalFetched}`)
+      
+      // Refresh recommendations after fetching
       await refresh()
     } catch (err: any) {
       setError(err)
@@ -324,7 +329,7 @@ export const useFeed = (
     } finally {
       setLoading(false)
     }
-  }, [refresh])
+  }, [refresh, supabase])
 
   // Cleanup
   useEffect(() => {
