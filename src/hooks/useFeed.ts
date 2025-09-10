@@ -23,7 +23,7 @@ export interface UseFeedReturn {
   muteSource: (source: string) => Promise<void>
   muteTopic: (topic: string) => Promise<void>
   trackView: (articleId: string) => Promise<void>
-  generateFresh: () => Promise<void>
+  generateFresh: () => Promise<{ success: boolean; articles_processed: number; categories: string[]; timestamp?: string }>
 }
 
 const DEFAULT_SETTINGS: Partial<FeedSettings> = {
@@ -282,48 +282,37 @@ export const useFeed = (
     try {
       setLoading(true)
       
-      console.log('Fetching fresh news from multiple reliable sources...')
+      console.log('🚀 Generating fresh news using Cybotic News System...')
       
-      const categories = ['general', 'technology', 'business', 'health', 'sports', 'politics']
-      let totalFetched = 0
-      
-      // Use enhanced aggregator which now includes NewsAPI, RSS, and Firecrawl
-      for (const category of categories) {
-        try {
-          const result = await supabase.functions.invoke('enhanced-news-aggregator', {
-            body: { 
-              category, 
-              limit: 15,
-              refresh: true,
-              forceRefresh: true 
-            }
-          })
-          
-          if (result.data?.total_processed > 0) {
-            totalFetched += result.data.total_processed
-            console.log(`Enhanced aggregator: ${result.data.total_processed} articles for ${category}`)
-          }
-        } catch (error) {
-          console.warn(`Enhanced aggregator failed for ${category}:`, error)
-          
-          // Fallback to Firecrawl
-          try {
-            const firecrawlResult = await fetchNewsWithFirecrawl(category, 8)
-            if (firecrawlResult.articles_count > 0) {
-              totalFetched += firecrawlResult.articles_count
-              console.log(`Firecrawl fallback: ${firecrawlResult.articles_count} articles for ${category}`)
-            }
-          } catch (fcError) {
-            console.warn(`Firecrawl fallback failed for ${category}:`, fcError)
-          }
+      // Use the new Cybotic News System for comprehensive news fetching
+      const result = await supabase.functions.invoke('cybotic-news-system', {
+        body: { 
+          action: 'refresh',
+          categories: ['general', 'technology', 'business', 'health', 'sports', 'politics'],
+          limit: 100
         }
+      })
+      
+      if (result.error) {
+        console.error('Cybotic News System error:', result.error)
+        throw new Error(result.error.message)
       }
       
-      console.log(`Total fresh articles fetched: ${totalFetched}`)
+      const totalFetched = result.data?.total_articles || 0
+      console.log(`✅ Cybotic News System: ${totalFetched} fresh articles processed`)
+      console.log('📊 Categories processed:', result.data?.categories_processed || [])
       
       // Refresh recommendations after fetching
       await refresh()
+      
+      return {
+        success: true,
+        articles_processed: totalFetched,
+        categories: result.data?.categories_processed || [],
+        timestamp: result.data?.timestamp
+      }
     } catch (err: any) {
+      console.error('Error in generateFresh:', err)
       setError(err)
       throw err
     } finally {

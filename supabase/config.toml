@@ -83,6 +83,12 @@ verify_jwt = false
 [functions.firecrawl-news-aggregator]
 verify_jwt = false
 
+[functions.cybotic-news-system]
+verify_jwt = false
+
+[functions.auto-news-refresh]
+verify_jwt = false
+
 [edge_runtime]
 policy = "per_function"
 inspector_port = 54330

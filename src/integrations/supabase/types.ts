@@ -44,6 +44,39 @@ export type Database = {
         }
         Relationships: []
       }
+      article_archive: {
+        Row: {
+          archive_reason: string | null
+          archived_at: string
+          content: string | null
+          id: string
+          original_article_id: string | null
+          source_name: string | null
+          title: string
+          url: string
+        }
+        Insert: {
+          archive_reason?: string | null
+          archived_at?: string
+          content?: string | null
+          id?: string
+          original_article_id?: string | null
+          source_name?: string | null
+          title: string
+          url: string
+        }
+        Update: {
+          archive_reason?: string | null
+          archived_at?: string
+          content?: string | null
+          id?: string
+          original_article_id?: string | null
+          source_name?: string | null
+          title?: string
+          url?: string
+        }
+        Relationships: []
+      }
       article_interactions: {
         Row: {
           article_id: string
@@ -330,6 +363,45 @@ export type Database = {
           sensationalism_threshold?: number | null
           toxicity_threshold?: number | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      news_fetch_logs: {
+        Row: {
+          api_source: string
+          api_status: string | null
+          articles_fetched: number | null
+          articles_stored: number | null
+          category: string | null
+          created_at: string
+          error_message: string | null
+          execution_time_ms: number | null
+          fetch_timestamp: string
+          id: string
+        }
+        Insert: {
+          api_source: string
+          api_status?: string | null
+          articles_fetched?: number | null
+          articles_stored?: number | null
+          category?: string | null
+          created_at?: string
+          error_message?: string | null
+          execution_time_ms?: number | null
+          fetch_timestamp?: string
+          id?: string
+        }
+        Update: {
+          api_source?: string
+          api_status?: string | null
+          articles_fetched?: number | null
+          articles_stored?: number | null
+          category?: string | null
+          created_at?: string
+          error_message?: string | null
+          execution_time_ms?: number | null
+          fetch_timestamp?: string
+          id?: string
         }
         Relationships: []
       }
