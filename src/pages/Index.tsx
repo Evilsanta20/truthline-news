@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Play, Sparkles, Home, TrendingUp, Bookmark, Globe, List, Video, RotateCcw, LogIn, User, LogOut } from 'lucide-react'
 import { EnhancedPersonalizedFeed } from '@/components/news/EnhancedPersonalizedFeed'
+import { MoodPage } from '@/pages/MoodPage'
 import { useAuth } from '@/hooks/useAuth'
 import { Link } from 'react-router-dom'
 
@@ -111,7 +112,15 @@ export default function Index() {
                 </Button>
               </div>
             </div>
-            <TabsList className="grid w-full grid-cols-7 h-12 bg-transparent border-0 rounded-none">
+            <TabsList className="grid w-full grid-cols-8 h-12 bg-transparent border-0 rounded-none">
+              <TabsTrigger 
+                value="mood" 
+                className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                Mood
+                <Badge className="ml-1 bg-accent text-accent-foreground text-xs">New</Badge>
+              </TabsTrigger>
               <TabsTrigger 
                 value="personalized" 
                 className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
@@ -163,6 +172,10 @@ export default function Index() {
                 <Badge className="ml-2 bg-accent text-accent-foreground text-xs">New</Badge>
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="mood" className="mt-0 p-0">
+              <MoodPage userId={user.id} />
+            </TabsContent>
 
             <TabsContent value="personalized" className="mt-0 p-0">
               <EnhancedPersonalizedFeed userId={user.id} />

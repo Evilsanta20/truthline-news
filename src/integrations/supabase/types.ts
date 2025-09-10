@@ -84,6 +84,7 @@ export type Database = {
           id: string
           interaction_type: string
           interaction_value: number | null
+          mood_context: Json | null
           user_id: string
         }
         Insert: {
@@ -92,6 +93,7 @@ export type Database = {
           id?: string
           interaction_type: string
           interaction_value?: number | null
+          mood_context?: Json | null
           user_id?: string
         }
         Update: {
@@ -100,6 +102,7 @@ export type Database = {
           id?: string
           interaction_type?: string
           interaction_value?: number | null
+          mood_context?: Json | null
           user_id?: string
         }
         Relationships: []
@@ -120,10 +123,13 @@ export type Database = {
           credibility_score: number | null
           description: string | null
           engagement_score: number | null
+          estimated_read_time: number | null
           id: string
           is_editors_pick: boolean | null
           is_featured: boolean | null
           is_trending: boolean | null
+          mood_depth_score: number | null
+          mood_positivity_score: number | null
           polarization_score: number | null
           processing_notes: string | null
           published_at: string | null
@@ -153,10 +159,13 @@ export type Database = {
           credibility_score?: number | null
           description?: string | null
           engagement_score?: number | null
+          estimated_read_time?: number | null
           id?: string
           is_editors_pick?: boolean | null
           is_featured?: boolean | null
           is_trending?: boolean | null
+          mood_depth_score?: number | null
+          mood_positivity_score?: number | null
           polarization_score?: number | null
           processing_notes?: string | null
           published_at?: string | null
@@ -186,10 +195,13 @@ export type Database = {
           credibility_score?: number | null
           description?: string | null
           engagement_score?: number | null
+          estimated_read_time?: number | null
           id?: string
           is_editors_pick?: boolean | null
           is_featured?: boolean | null
           is_trending?: boolean | null
+          mood_depth_score?: number | null
+          mood_positivity_score?: number | null
           polarization_score?: number | null
           processing_notes?: string | null
           published_at?: string | null
@@ -366,6 +378,50 @@ export type Database = {
         }
         Relationships: []
       }
+      mood_recommendations: {
+        Row: {
+          article_id: string
+          clicked: boolean | null
+          created_at: string | null
+          feedback_score: number | null
+          id: string
+          mood_match_reasons: string[] | null
+          mood_profile: Json
+          recommendation_score: number
+          user_id: string
+        }
+        Insert: {
+          article_id: string
+          clicked?: boolean | null
+          created_at?: string | null
+          feedback_score?: number | null
+          id?: string
+          mood_match_reasons?: string[] | null
+          mood_profile: Json
+          recommendation_score: number
+          user_id: string
+        }
+        Update: {
+          article_id?: string
+          clicked?: boolean | null
+          created_at?: string | null
+          feedback_score?: number | null
+          id?: string
+          mood_match_reasons?: string[] | null
+          mood_profile?: Json
+          recommendation_score?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mood_recommendations_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       news_fetch_logs: {
         Row: {
           api_source: string
@@ -532,8 +588,12 @@ export type Database = {
           blocked_sources: string[] | null
           blocked_topics: string[] | null
           created_at: string
+          current_mood: Json | null
           id: string
           interaction_scores: Json | null
+          mood_history: Json | null
+          mood_last_updated: string | null
+          mood_presets: Json | null
           preferred_sources: string[] | null
           preferred_topics: string[] | null
           reading_history: Json | null
@@ -544,8 +604,12 @@ export type Database = {
           blocked_sources?: string[] | null
           blocked_topics?: string[] | null
           created_at?: string
+          current_mood?: Json | null
           id?: string
           interaction_scores?: Json | null
+          mood_history?: Json | null
+          mood_last_updated?: string | null
+          mood_presets?: Json | null
           preferred_sources?: string[] | null
           preferred_topics?: string[] | null
           reading_history?: Json | null
@@ -556,8 +620,12 @@ export type Database = {
           blocked_sources?: string[] | null
           blocked_topics?: string[] | null
           created_at?: string
+          current_mood?: Json | null
           id?: string
           interaction_scores?: Json | null
+          mood_history?: Json | null
+          mood_last_updated?: string | null
+          mood_presets?: Json | null
           preferred_sources?: string[] | null
           preferred_topics?: string[] | null
           reading_history?: Json | null
@@ -763,6 +831,10 @@ export type Database = {
       sparsevec_typmod_in: {
         Args: { "": unknown[] }
         Returns: number
+      }
+      update_mood_scores: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       vector_avg: {
         Args: { "": number[] }
