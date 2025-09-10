@@ -285,46 +285,29 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
     try {
       setGeneratingArticles(true)
       
-      console.log('Fetching fresh news from multiple reliable sources...')
+      console.log('🚀 Generating fresh news using Cybotic News System...')
       
-      const categories = ['general', 'technology', 'business', 'health', 'sports', 'politics']
-      let totalFetched = 0
-      
-      // Use enhanced aggregator which now includes NewsAPI, RSS, and Firecrawl
-      for (const category of categories) {
-        try {
-          const result = await supabase.functions.invoke('enhanced-news-aggregator', {
-            body: { 
-              category, 
-              limit: 20,
-              refresh: true,
-              forceRefresh: true 
-            }
-          })
-          
-          if (result.data?.total_processed > 0) {
-            totalFetched += result.data.total_processed
-            console.log(`Enhanced aggregator: ${result.data.total_processed} articles for ${category}`)
-          }
-        } catch (error) {
-          console.warn(`Enhanced aggregator failed for ${category}:`, error)
-          
-          // Fallback to Firecrawl
-          try {
-            const firecrawlResult = await fetchNewsWithFirecrawl(category, 10)
-            if (firecrawlResult.articles_count > 0) {
-              totalFetched += firecrawlResult.articles_count
-              console.log(`Firecrawl fallback: ${firecrawlResult.articles_count} articles for ${category}`)
-            }
-          } catch (fcError) {
-            console.warn(`Firecrawl fallback failed for ${category}:`, fcError)
-          }
+      // Use the new Cybotic News System for comprehensive news fetching
+      const result = await supabase.functions.invoke('cybotic-news-system', {
+        body: { 
+          action: 'refresh',
+          categories: ['general', 'technology', 'business', 'health', 'sports', 'politics'],
+          limit: 120
         }
+      })
+      
+      if (result.error) {
+        console.error('Cybotic News System error:', result.error)
+        throw new Error(result.error.message)
       }
       
+      const totalFetched = result.data?.total_articles || 0
+      console.log(`✅ Cybotic News System: ${totalFetched} fresh articles processed`)
+      console.log('📊 Categories processed:', result.data?.categories_processed || [])
+      
       toast({
-        title: "Fresh News Loaded!",
-        description: `Fetched ${totalFetched} fresh articles from real news sources`,
+        title: "Fresh News Generated!",
+        description: `Processed ${totalFetched} articles from ${result.data?.categories_processed?.length || 0} categories using Cybotic News System`,
       })
       
       // Refresh recommendations after fetching
@@ -333,7 +316,7 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
       console.error('Error fetching fresh news:', error)
       toast({
         title: "Error",
-        description: "Failed to fetch fresh news. Please try again.",
+        description: `Failed to fetch fresh news: ${error.message}`,
         variant: "destructive"
       })
     } finally {
@@ -451,11 +434,11 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
               onClick={generateFreshArticles}
               variant="default"
               size="sm"
-              className="hover-lift bg-accent text-accent-foreground hover:bg-accent/90"
+              className="hover-lift bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
               disabled={generatingArticles}
             >
-              <Sparkles className={`w-4 h-4 mr-2 ${generatingArticles ? 'animate-spin' : ''}`} />
-              {generatingArticles ? 'Fetching News...' : 'Get Fresh News'}
+              <Zap className={`w-4 h-4 mr-2 ${generatingArticles ? 'animate-spin' : ''}`} />
+              {generatingArticles ? 'Generating News...' : 'Generate Fresh News'}
             </Button>
           </div>
             <Button

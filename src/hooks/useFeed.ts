@@ -137,6 +137,7 @@ export const useFeed = (
       }
 
       // Fallback to direct database query if no recommendations
+      console.log('📝 Fetching articles from database directly')
       let query = supabase
         .from('articles')
         .select(`
@@ -191,12 +192,21 @@ export const useFeed = (
     }
   }, [articles.length, initialLimit, recommendations, settings, supabase])
 
-  // Initial load
+  // Initial load and refresh triggers
   useEffect(() => {
     if (userId) {
+      console.log('🔄 Loading initial articles for user:', userId)
       fetchArticles(false)
     }
   }, [userId, fetchArticles])
+
+  // Force refresh when recommendations change
+  useEffect(() => {
+    if (recommendations && recommendations.length > 0) {
+      console.log('📊 New recommendations received, updating feed...')
+      setArticles(recommendations)
+    }
+  }, [recommendations])
 
   // Auto refresh
   useEffect(() => {
@@ -221,8 +231,10 @@ export const useFeed = (
   }, [hasMore, loading, fetchArticles])
 
   const refresh = useCallback(async () => {
+    console.log('🔄 Manual refresh triggered')
     await refreshRecommendations()
     await fetchArticles(false)
+    console.log('✅ Refresh completed')
   }, [fetchArticles, refreshRecommendations])
 
   const updateSettings = useCallback(async (newSettings: Partial<FeedSettings>) => {
