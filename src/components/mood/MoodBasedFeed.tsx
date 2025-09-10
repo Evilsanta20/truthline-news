@@ -261,10 +261,7 @@ export default function MoodBasedFeed({ userId, moodProfile, className }: MoodBa
                       published_at: article.published_at || article.created_at,
                       is_featured: article.is_featured || false
                     } as any}
-                    onLike={() => handleArticleFeedback(article.id, true)}
-                    onBookmark={() => {}}
-                    onView={() => {}}
-                    showEngagement={true}
+                    variant="default"
                   />
                   
                   {/* Mood Match Reasons */}
