@@ -190,15 +190,15 @@ export const useFeed = (
     } finally {
       setLoading(false)
     }
-  }, [articles.length, initialLimit, recommendations, settings, supabase])
+  }, [initialLimit, recommendations, settings])
 
-  // Initial load and refresh triggers
+  // Initial load and refresh triggers  
   useEffect(() => {
     if (userId) {
       console.log('🔄 Loading initial articles for user:', userId)
       fetchArticles(false)
     }
-  }, [userId, fetchArticles])
+  }, [userId]) // Remove fetchArticles from deps to prevent infinite loop
 
   // Force refresh when recommendations change
   useEffect(() => {
@@ -215,6 +215,7 @@ export const useFeed = (
     const interval = (settings.refreshInterval || refreshInterval) * 1000
     
     refreshTimeoutRef.current = setTimeout(() => {
+      // Use a stable version that doesn't recreate
       fetchArticles(false)
     }, interval)
 
@@ -223,7 +224,7 @@ export const useFeed = (
         clearTimeout(refreshTimeoutRef.current)
       }
     }
-  }, [settings.autoRefresh, settings.refreshInterval, refreshInterval, userId, fetchArticles])
+  }, [settings.autoRefresh, settings.refreshInterval, refreshInterval, userId]) // Remove fetchArticles from deps
 
   const loadMore = useCallback(async () => {
     if (!hasMore || loading) return
