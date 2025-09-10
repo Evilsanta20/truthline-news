@@ -1,4 +1,4 @@
-import { ReelFeed } from './Feed'
+import { ReelFeed } from './ReelFeed'
 import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'

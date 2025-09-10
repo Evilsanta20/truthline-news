@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Play, Sparkles, Home, TrendingUp, Bookmark, Globe, List, Video, RotateCcw, LogIn, User, LogOut } from 'lucide-react'
 import { EnhancedPersonalizedFeed } from '@/components/news/EnhancedPersonalizedFeed'
+import { ArticleReels } from '@/components/reels/ArticleReels'
 import { MoodPage } from '@/pages/MoodPage'
 import { useAuth } from '@/hooks/useAuth'
 import { Link } from 'react-router-dom'
@@ -218,12 +219,7 @@ export default function Index() {
             </TabsContent>
 
             <TabsContent value="reels" className="mt-0 p-0">
-              <div className="p-8 text-center">
-                <Video className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-foreground mb-2">News Reels</h3>
-                <p className="text-muted-foreground">TikTok-style news experience - Coming Soon!</p>
-                <Badge className="mt-2 bg-accent text-accent-foreground">New Feature</Badge>
-              </div>
+              <ArticleReels />
             </TabsContent>
           </Tabs>
         </div>
