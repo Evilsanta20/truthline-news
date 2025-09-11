@@ -13,7 +13,8 @@ import {
   ExternalLink,
   Clock,
   Eye,
-  Sparkles
+  Sparkles,
+  Shield
 } from 'lucide-react'
 import { PersonalizedArticle } from '@/hooks/usePersonalization'
 
@@ -193,10 +194,15 @@ export const ReelCard = ({
             {article.description}
           </p>
 
-          {/* Sentiment badge for lovable reels */}
-          {(article as any).sentiment && (article as any).isLovableReel && (
+          {/* Sentiment badge for lovable reels and refined content */}
+          {((article as any).sentiment && ((article as any).isLovableReel || (article as any).isRefined)) && (
             <div className="flex items-center gap-1">
-              <Badge variant="outline" className="text-xs border-pink-300 text-pink-600 bg-pink-50">
+              <Badge variant="outline" className={cn(
+                "text-xs w-fit",
+                (article as any).isRefined 
+                  ? "border-green-300 text-green-600 bg-green-50" 
+                  : "border-pink-300 text-pink-600 bg-pink-50"
+              )}>
                 {(article as any).sentiment}
               </Badge>
             </div>

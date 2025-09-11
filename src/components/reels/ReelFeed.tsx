@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useFeed } from '@/hooks/useFeed'
 import { useLovableReels } from '@/hooks/useLovableReels'
+import { useLovableContentRefiner } from '@/hooks/useLovableContentRefiner'
 import { useToast } from '@/hooks/use-toast'
 import {
   Search,
@@ -17,7 +18,9 @@ import {
   Sparkles,
   AlertCircle,
   TrendingUp,
-  Play
+  Play,
+  Heart,
+  Shield
 } from 'lucide-react'
 import { PersonalizedArticle } from '@/hooks/usePersonalization'
 
@@ -59,6 +62,7 @@ export const ReelFeed = ({ userId, className }: ReelFeedProps) => {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [reelData, setReelData] = useState<Record<string, any>>({})
+  const [refinedData, setRefinedData] = useState<Record<string, any>>({})
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
 
@@ -80,6 +84,7 @@ export const ReelFeed = ({ userId, className }: ReelFeedProps) => {
   } = useFeed(userId, { initialLimit: 30 })
 
   const { transformToLovableReel, batchTransformArticles, loading: reelLoading } = useLovableReels(userId)
+  const { refineArticle, batchRefineArticles, loading: refineLoading, batchLoading } = useLovableContentRefiner()
 
   // Filter articles based on search query
   const filteredArticles = articles.filter(article =>
@@ -264,6 +269,30 @@ export const ReelFeed = ({ userId, className }: ReelFeedProps) => {
     }
   }, [articles, batchTransformArticles, toast])
 
+  const refineContentToLovable = useCallback(async () => {
+    if (!articles.length) return
+    
+    try {
+      const refined = await batchRefineArticles(articles.slice(0, 20)) // Refine first 20 articles
+      const refinedMap: Record<string, any> = {}
+      refined.forEach(refinedArticle => {
+        if (refinedArticle.original_article_id) {
+          refinedMap[refinedArticle.original_article_id] = refinedArticle
+        }
+      })
+      setRefinedData(refinedMap)
+      
+      if (refined.length > 0) {
+        toast({
+          title: "🌟 Content Refined!",
+          description: `${refined.length} articles transformed with lovable, balanced content`,
+        })
+      }
+    } catch (error) {
+      console.error('Error refining content:', error)
+    }
+  }, [articles, batchRefineArticles, toast])
+
   if (error) {
     return (
       <div className={`space-y-6 ${className}`}>
@@ -299,6 +328,16 @@ export const ReelFeed = ({ userId, className }: ReelFeedProps) => {
         </div>
         <div className="flex gap-2">
           <Button
+            onClick={refineContentToLovable}
+            disabled={batchLoading || !articles.length}
+            variant="default"
+            size="sm"
+            className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+          >
+            <Shield className={`w-4 h-4 mr-2 ${batchLoading ? 'animate-spin' : ''}`} />
+            Refine Content
+          </Button>
+          <Button
             onClick={transformToLovableReels}
             disabled={reelLoading || !articles.length}
             variant="default"
@@ -306,7 +345,7 @@ export const ReelFeed = ({ userId, className }: ReelFeedProps) => {
             className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600"
           >
             <Sparkles className={`w-4 h-4 mr-2 ${reelLoading ? 'animate-spin' : ''}`} />
-            Create Lovable Reels
+            Create Reels
           </Button>
           <Button onClick={handleRefresh} variant="outline" size="sm">
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
@@ -354,7 +393,18 @@ export const ReelFeed = ({ userId, className }: ReelFeedProps) => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {filteredArticles.map((article, index) => {
           const reel = reelData[article.id]
-          const enhancedArticle = reel ? {
+          const refined = refinedData[article.id]
+          
+          // Prioritize refined content, then reel content, then original
+          const enhancedArticle = refined ? {
+            ...article,
+            title: refined.title,
+            description: refined.article.substring(0, 200) + '...',
+            topic_tags: [...(article.topic_tags || []), ...(refined.tags || [])],
+            sentiment: refined.sentiment,
+            isRefined: true,
+            refinedContent: refined
+          } : reel ? {
             ...article,
             title: reel.headline,
             description: reel.reel_text, // Use description field which ReelCard expects

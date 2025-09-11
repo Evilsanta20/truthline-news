@@ -92,6 +92,9 @@ verify_jwt = false
 [functions.lovable-reel-transformer]
 verify_jwt = false
 
+[functions.lovable-content-refiner]
+verify_jwt = false
+
 [functions.mood-processor]
 verify_jwt = false
 
