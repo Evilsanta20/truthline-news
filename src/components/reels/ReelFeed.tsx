@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useFeed } from '@/hooks/useFeed'
+import { useLovableReels } from '@/hooks/useLovableReels'
 import { useToast } from '@/hooks/use-toast'
 import {
   Search,
@@ -57,6 +58,7 @@ export const ReelFeed = ({ userId, className }: ReelFeedProps) => {
   const [selectedArticle, setSelectedArticle] = useState<PersonalizedArticle | null>(null)
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [reelData, setReelData] = useState<Record<string, any>>({})
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
 
@@ -76,6 +78,8 @@ export const ReelFeed = ({ userId, className }: ReelFeedProps) => {
     trackView,
     generateFresh
   } = useFeed(userId, { initialLimit: 30 })
+
+  const { transformToLovableReel, batchTransformArticles, loading: reelLoading } = useLovableReels(userId)
 
   // Filter articles based on search query
   const filteredArticles = articles.filter(article =>
@@ -236,6 +240,30 @@ export const ReelFeed = ({ userId, className }: ReelFeedProps) => {
     }
   }, [generateFresh, toast])
 
+  const transformToLovableReels = useCallback(async () => {
+    if (!articles.length) return
+    
+    try {
+      const reels = await batchTransformArticles(articles.slice(0, 15)) // Transform first 15 articles
+      const reelMap: Record<string, any> = {}
+      reels.forEach(reel => {
+        if (reel.original_article_id) {
+          reelMap[reel.original_article_id] = reel
+        }
+      })
+      setReelData(reelMap)
+      
+      if (reels.length > 0) {
+        toast({
+          title: "✨ Lovable Reels Created!",
+          description: `${reels.length} heartwarming reels ready for you`,
+        })
+      }
+    } catch (error) {
+      console.error('Error transforming to lovable reels:', error)
+    }
+  }, [articles, batchTransformArticles, toast])
+
   if (error) {
     return (
       <div className={`space-y-6 ${className}`}>
@@ -270,6 +298,16 @@ export const ReelFeed = ({ userId, className }: ReelFeedProps) => {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button
+            onClick={transformToLovableReels}
+            disabled={reelLoading || !articles.length}
+            variant="default"
+            size="sm"
+            className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600"
+          >
+            <Sparkles className={`w-4 h-4 mr-2 ${reelLoading ? 'animate-spin' : ''}`} />
+            Create Lovable Reels
+          </Button>
           <Button onClick={handleRefresh} variant="outline" size="sm">
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
@@ -278,7 +316,7 @@ export const ReelFeed = ({ userId, className }: ReelFeedProps) => {
             <Settings className="w-4 h-4 mr-2" />
             Settings
           </Button>
-          <Button onClick={handleGenerateFresh} variant="default" size="sm">
+          <Button onClick={handleGenerateFresh} variant="outline" size="sm">
             <TrendingUp className="w-4 h-4 mr-2" />
             Generate Fresh
           </Button>
@@ -314,21 +352,33 @@ export const ReelFeed = ({ userId, className }: ReelFeedProps) => {
 
       {/* Articles Grid - Vertical TikTok-style layout */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {filteredArticles.map((article, index) => (
-          <ReelCard
-            key={article.id}
-            article={article}
-            isSelected={index === selectedIndex}
-            onSelect={setSelectedArticle}
-            onLike={handleLike}
-            onBookmark={handleBookmark}
-            onMuteTopic={handleMuteTopic}
-            onMoreLikeThis={handleMoreLikeThis}
-            onView={handleView}
-            tabIndex={index === selectedIndex ? 0 : -1}
-            className="animate-fade-in reel-card-hover"
-          />
-        ))}
+        {filteredArticles.map((article, index) => {
+          const reel = reelData[article.id]
+          const enhancedArticle = reel ? {
+            ...article,
+            title: reel.headline,
+            description: reel.reel_text, // Use description field which ReelCard expects
+            topic_tags: [...(article.topic_tags || []), ...(reel.tags || [])],
+            sentiment: reel.sentiment,
+            isLovableReel: true
+          } : article
+
+          return (
+            <ReelCard
+              key={article.id}
+              article={enhancedArticle}
+              isSelected={index === selectedIndex}
+              onSelect={setSelectedArticle}
+              onLike={handleLike}
+              onBookmark={handleBookmark}
+              onMuteTopic={handleMuteTopic}
+              onMoreLikeThis={handleMoreLikeThis}
+              onView={handleView}
+              tabIndex={index === selectedIndex ? 0 : -1}
+              className="animate-fade-in reel-card-hover"
+            />
+          )
+        })}
 
         {/* Loading skeletons */}
         {loading && (

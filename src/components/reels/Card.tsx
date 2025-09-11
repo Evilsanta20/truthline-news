@@ -12,7 +12,8 @@ import {
   MoreHorizontal,
   ExternalLink,
   Clock,
-  Eye
+  Eye,
+  Sparkles
 } from 'lucide-react'
 import { PersonalizedArticle } from '@/hooks/usePersonalization'
 
@@ -191,6 +192,15 @@ export const ReelCard = ({
           <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
             {article.description}
           </p>
+
+          {/* Sentiment badge for lovable reels */}
+          {(article as any).sentiment && (article as any).isLovableReel && (
+            <div className="flex items-center gap-1">
+              <Badge variant="outline" className="text-xs border-pink-300 text-pink-600 bg-pink-50">
+                {(article as any).sentiment}
+              </Badge>
+            </div>
+          )}
 
           {/* Topics */}
           {article.topic_tags && article.topic_tags.length > 0 && (

@@ -89,6 +89,12 @@ verify_jwt = false
 [functions.auto-news-refresh]
 verify_jwt = false
 
+[functions.lovable-reel-transformer]
+verify_jwt = false
+
+[functions.mood-processor]
+verify_jwt = false
+
 [edge_runtime]
 policy = "per_function"
 inspector_port = 54330
