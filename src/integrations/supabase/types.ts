@@ -113,6 +113,7 @@ export type Database = {
           ai_summary: string | null
           author: string | null
           bias_score: number | null
+          cache_expires_at: string | null
           category_id: string | null
           content: string | null
           content_embedding: string | null
@@ -121,6 +122,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           credibility_score: number | null
+          data_freshness_score: number | null
           description: string | null
           engagement_score: number | null
           estimated_read_time: number | null
@@ -128,6 +130,7 @@ export type Database = {
           is_editors_pick: boolean | null
           is_featured: boolean | null
           is_trending: boolean | null
+          last_verified_at: string | null
           mood_depth_score: number | null
           mood_positivity_score: number | null
           polarization_score: number | null
@@ -136,6 +139,7 @@ export type Database = {
           reading_time_minutes: number | null
           sentiment_score: number | null
           source_id: string | null
+          source_last_modified: string | null
           source_name: string | null
           title: string
           topic_tags: string[] | null
@@ -149,6 +153,7 @@ export type Database = {
           ai_summary?: string | null
           author?: string | null
           bias_score?: number | null
+          cache_expires_at?: string | null
           category_id?: string | null
           content?: string | null
           content_embedding?: string | null
@@ -157,6 +162,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           credibility_score?: number | null
+          data_freshness_score?: number | null
           description?: string | null
           engagement_score?: number | null
           estimated_read_time?: number | null
@@ -164,6 +170,7 @@ export type Database = {
           is_editors_pick?: boolean | null
           is_featured?: boolean | null
           is_trending?: boolean | null
+          last_verified_at?: string | null
           mood_depth_score?: number | null
           mood_positivity_score?: number | null
           polarization_score?: number | null
@@ -172,6 +179,7 @@ export type Database = {
           reading_time_minutes?: number | null
           sentiment_score?: number | null
           source_id?: string | null
+          source_last_modified?: string | null
           source_name?: string | null
           title: string
           topic_tags?: string[] | null
@@ -185,6 +193,7 @@ export type Database = {
           ai_summary?: string | null
           author?: string | null
           bias_score?: number | null
+          cache_expires_at?: string | null
           category_id?: string | null
           content?: string | null
           content_embedding?: string | null
@@ -193,6 +202,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           credibility_score?: number | null
+          data_freshness_score?: number | null
           description?: string | null
           engagement_score?: number | null
           estimated_read_time?: number | null
@@ -200,6 +210,7 @@ export type Database = {
           is_editors_pick?: boolean | null
           is_featured?: boolean | null
           is_trending?: boolean | null
+          last_verified_at?: string | null
           mood_depth_score?: number | null
           mood_positivity_score?: number | null
           polarization_score?: number | null
@@ -208,6 +219,7 @@ export type Database = {
           reading_time_minutes?: number | null
           sentiment_score?: number | null
           source_id?: string | null
+          source_last_modified?: string | null
           source_name?: string | null
           title?: string
           topic_tags?: string[] | null
@@ -375,6 +387,51 @@ export type Database = {
           sensationalism_threshold?: number | null
           toxicity_threshold?: number | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      data_sync_status: {
+        Row: {
+          articles_added: number | null
+          articles_processed: number | null
+          articles_removed: number | null
+          articles_updated: number | null
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          started_at: string
+          status: string
+          sync_type: string
+        }
+        Insert: {
+          articles_added?: number | null
+          articles_processed?: number | null
+          articles_removed?: number | null
+          articles_updated?: number | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          started_at?: string
+          status?: string
+          sync_type: string
+        }
+        Update: {
+          articles_added?: number | null
+          articles_processed?: number | null
+          articles_removed?: number | null
+          articles_updated?: number | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          started_at?: string
+          status?: string
+          sync_type?: string
         }
         Relationships: []
       }
@@ -753,9 +810,29 @@ export type Database = {
         Args: { "": string } | { "": unknown }
         Returns: unknown
       }
+      calculate_content_hash: {
+        Args: { content_text: string; title_text: string; url_text: string }
+        Returns: string
+      }
+      cleanup_duplicate_articles: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       cleanup_old_logs: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      complete_sync_operation: {
+        Args: {
+          articles_added_param?: number
+          articles_processed_param?: number
+          articles_removed_param?: number
+          articles_updated_param?: number
+          error_message_param?: string
+          status_param?: string
+          sync_id_param: string
+        }
+        Returns: boolean
       }
       get_user_role: {
         Args: { _user_id: string }
@@ -818,7 +895,7 @@ export type Database = {
       }
       l2_normalize: {
         Args: { "": string } | { "": unknown } | { "": unknown }
-        Returns: unknown
+        Returns: string
       }
       sparsevec_out: {
         Args: { "": unknown }
@@ -832,9 +909,36 @@ export type Database = {
         Args: { "": unknown[] }
         Returns: number
       }
+      start_sync_operation: {
+        Args: { metadata_param?: Json; sync_type_param: string }
+        Returns: string
+      }
+      update_data_freshness: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       update_mood_scores: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      upsert_article: {
+        Args: {
+          p_author?: string
+          p_bias_score?: number
+          p_content?: string
+          p_content_quality_score?: number
+          p_credibility_score?: number
+          p_description?: string
+          p_engagement_score?: number
+          p_published_at?: string
+          p_sentiment_score?: number
+          p_source_name?: string
+          p_title: string
+          p_topic_tags?: string[]
+          p_url: string
+          p_url_to_image?: string
+        }
+        Returns: string
       }
       vector_avg: {
         Args: { "": number[] }

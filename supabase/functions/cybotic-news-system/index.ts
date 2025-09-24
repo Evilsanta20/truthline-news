@@ -194,7 +194,7 @@ class CyboticNewsSystem {
           console.log(`${api.name}: Retrieved ${articles.length} articles in ${apiExecutionTime}ms`)
           
           if (articles.length > 0) {
-            const stored = await this.storeArticles(articles, api.name, category)
+            const stored = await this.storeArticles(articles, api.name, category, useSmartUpsert)
             totalFetched += articles.length
             totalStored += stored
             
@@ -220,34 +220,63 @@ class CyboticNewsSystem {
     await this.logFetch('SYSTEM', 'ALL', totalFetched, totalStored, 'success', null, totalExecutionTime)
   }
   
-  private async storeArticles(articles: any[], sourceAPI: string, category: string): Promise<number> {
+  private async storeArticles(articles: any[], sourceAPI: string, category: string, useSmartUpsert = false): Promise<number> {
     let stored = 0
     
     for (const article of articles) {
       try {
-        // Create content hash for duplicate detection
-        const contentHash = await this.generateContentHash(article.title + (article.url || ''))
-        
-        // Check for duplicates by title + URL
-        const { data: existing } = await this.supabase
-          .from('articles')
-          .select('id')
-          .or(`content_hash.eq.${contentHash},and(title.eq."${article.title.replace(/"/g, '\\"')}",url.eq."${article.url}")`)
-          .single()
-        
-        if (existing) {
-          console.log(`Duplicate found: ${article.title.substring(0, 50)}...`)
-          continue
-        }
-        
-        // Prepare article data
-        const articleData = {
-          title: article.title.substring(0, 500),
-          description: (article.description || article.content || '').substring(0, 1000),
-          content: article.content || article.description || '',
-          url: article.url,
-          url_to_image: article.urlToImage || null,
-          source_name: article.sourceName || sourceAPI,
+        if (useSmartUpsert) {
+          // Use the new smart upsert function for persistence and deduplication
+          const { data: articleId, error: upsertError } = await this.supabase.rpc('upsert_article', {
+            p_title: article.title?.substring(0, 500) || 'Untitled',
+            p_url: article.url || `#${Date.now()}`,
+            p_description: (article.description || article.content || '').substring(0, 1000),
+            p_content: article.content || article.description || '',
+            p_url_to_image: article.urlToImage || null,
+            p_source_name: article.sourceName || sourceAPI,
+            p_author: article.author || null,
+            p_published_at: article.publishedAt ? new Date(article.publishedAt).toISOString() : null,
+            p_topic_tags: this.extractTopicTags(article.title, article.description),
+            p_bias_score: Math.random() * 0.4 + 0.3, // Random between 0.3-0.7
+            p_credibility_score: Math.random() * 0.3 + 0.6, // Random between 0.6-0.9
+            p_sentiment_score: Math.random() * 0.6 + 0.2, // Random between 0.2-0.8
+            p_content_quality_score: this.calculateContentQuality(article),
+            p_engagement_score: 0
+          })
+          
+          if (upsertError) {
+            console.error('Upsert error:', upsertError)
+            continue
+          }
+          
+          if (articleId) {
+            stored++
+            console.log(`✅ Upserted: ${article.title.substring(0, 50)}...`)
+          }
+        } else {
+          // Legacy storage method
+          const contentHash = await this.generateContentHash(article.title + (article.url || ''))
+          
+          // Check for duplicates by title + URL
+          const { data: existing } = await this.supabase
+            .from('articles')
+            .select('id')
+            .or(`content_hash.eq.${contentHash},and(title.eq."${article.title.replace(/"/g, '\\"')}",url.eq."${article.url}")`)
+            .single()
+          
+          if (existing) {
+            console.log(`Duplicate found: ${article.title.substring(0, 50)}...`)
+            continue
+          }
+          
+          // Prepare article data
+          const articleData = {
+            title: article.title.substring(0, 500),
+            description: (article.description || article.content || '').substring(0, 1000),
+            content: article.content || article.description || '',
+            url: article.url,
+            url_to_image: article.urlToImage || null,
+            source_name: article.sourceName || sourceAPI,
           author: article.author || null,
           published_at: article.publishedAt || new Date().toISOString(),
           topic_tags: this.extractTags(article.title + ' ' + (article.content || '')),
