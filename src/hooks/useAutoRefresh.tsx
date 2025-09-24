@@ -121,12 +121,12 @@ export const useAutoRefresh = ({
     setNextRefresh(refreshInterval)
   }, [userId, refreshInterval])
 
-  // Format countdown display
-  const formatCountdown = (seconds: number) => {
+  // Format countdown display - use useCallback to ensure stability
+  const formatCountdown = useCallback((seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
+  }, [])
 
   // Initial load of articles
   const loadInitialArticles = useCallback(async () => {
