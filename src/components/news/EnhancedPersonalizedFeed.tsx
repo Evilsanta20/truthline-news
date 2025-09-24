@@ -35,6 +35,7 @@ import {
   RefreshCw
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { RefreshButton } from './RefreshButton'
 
 interface EnhancedPersonalizedFeedProps {
   userId: string
@@ -414,32 +415,58 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
                 {pendingCount} New Article{pendingCount > 1 ? 's' : ''}
               </Button>
             )}
-            <Button 
-              onClick={() => {
+            <RefreshButton
+              onRefresh={async () => {
                 manualRefresh()
                 toast({
                   title: "Feed refreshed",
                   description: "Latest articles loaded successfully"
                 })
-              }} 
-              variant="outline" 
-              size="sm" 
-              className="hover-lift"
-              disabled={loading}
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              {loading ? 'Refreshing...' : 'Refresh Now'}
-            </Button>
-            <Button
-              onClick={generateFreshArticles}
-              variant="default"
-              size="sm"
-              className="hover-lift bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-              disabled={generatingArticles}
-            >
-              <Zap className={`w-4 h-4 mr-2 ${generatingArticles ? 'animate-spin' : ''}`} />
-              {generatingArticles ? 'Generating News...' : 'Generate Fresh News'}
-            </Button>
+              }}
+              onGenerateFresh={async () => {
+                try {
+                  setGeneratingArticles(true)
+                  
+                  console.log('🚀 Generating fresh news using Cybotic News System...')
+                  
+                  const result = await supabase.functions.invoke('cybotic-news-system', {
+                    body: { 
+                      action: 'refresh',
+                      categories: ['general', 'technology', 'business', 'health', 'sports', 'politics'],
+                      limit: 120
+                    }
+                  })
+                  
+                  if (result.error) {
+                    console.error('Cybotic News System error:', result.error)
+                    throw new Error(result.error.message || 'Failed to generate fresh news')
+                  }
+                  
+                  const totalFetched = result.data?.total_articles || 0
+                  console.log(`✅ Cybotic News System: ${totalFetched} fresh articles processed`)
+                  
+                  // Refresh recommendations after fetching
+                  manualRefresh()
+                  
+                  return {
+                    success: true,
+                    articles_processed: totalFetched,
+                    categories: result.data?.categories_processed || []
+                  }
+                } catch (error) {
+                  console.error('Error fetching fresh news:', error)
+                  return {
+                    success: false,
+                    articles_processed: 0,
+                    categories: []
+                  }
+                } finally {
+                  setGeneratingArticles(false)
+                }
+              }}
+              loading={loading || generatingArticles}
+              className="flex-wrap"
+            />
           </div>
             <Button
               onClick={() => window.location.reload()}
