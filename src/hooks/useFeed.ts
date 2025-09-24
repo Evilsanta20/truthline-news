@@ -91,7 +91,12 @@ export const useFeed = (
 
       // Use personalized recommendations first
       if (recommendations && recommendations.length > 0) {
+        const cutoffMs = Date.now() - 48 * 60 * 60 * 1000 // 48 hours
         const filteredArticles = recommendations.filter(article => {
+          // Freshness filter
+          const ts = new Date((article as any).published_at || (article as any).created_at || 0).getTime()
+          if (!ts || ts < cutoffMs) return false
+
           // Apply muted topics filter
           if (useSettings.mutedTopics?.length) {
             const hasBlockedTopic = article.topic_tags?.some(tag => 
@@ -138,12 +143,14 @@ export const useFeed = (
 
       // Fallback to direct database query if no recommendations
       console.log('📝 Fetching articles from database directly')
+      const freshnessCutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
       let query = supabase
         .from('articles')
         .select(`
           *,
           categories (name, color, slug)
         `)
+        .or(`created_at.gte.${freshnessCutoff},published_at.gte.${freshnessCutoff}`)
         .order('created_at', { ascending: false })
 
       // Apply quality filters
@@ -202,12 +209,26 @@ export const useFeed = (
       setError(null)
       setHasMore(true)
       
-      // Small delay to ensure proper initialization
-      const timeoutId = setTimeout(() => {
-        fetchArticles(false)
-      }, 100)
-      
-      return () => clearTimeout(timeoutId)
+      const init = async () => {
+        try {
+          // Force a quick fresh sync before first render to avoid stale feed
+          console.log('⚡ Ensuring fresh feed via enhanced-data-sync...')
+          const { data, error } = await supabase.functions.invoke('enhanced-data-sync', {
+            body: { action: 'sync', force_fresh: true, cleanup_old: true }
+          })
+          if (error) {
+            console.warn('enhanced-data-sync failed, falling back to cybotic-news-system:', error.message)
+            await supabase.functions.invoke('cybotic-news-system', {
+              body: { action: 'refresh', categories: ['general','technology','business','health','sports','politics'], limit: 120 }
+            })
+          }
+        } catch (e) {
+          console.error('Fresh sync error:', e)
+        } finally {
+          await fetchArticles(false)
+        }
+      }
+      init()
     }
   }, [userId]) // Remove fetchArticles from deps to prevent infinite loop
 
@@ -251,6 +272,19 @@ export const useFeed = (
     try {
       console.log('🔄 Manual refresh triggered')
       setError(null)
+      
+      // Trigger fresh sync first
+      try {
+        const { error } = await supabase.functions.invoke('enhanced-data-sync', {
+          body: { action: 'sync', force_fresh: true, cleanup_old: true }
+        })
+        if (error) throw new Error(error.message)
+      } catch (e) {
+        console.warn('enhanced-data-sync failed on refresh, falling back to cybotic-news-system:', (e as Error).message)
+        await supabase.functions.invoke('cybotic-news-system', {
+          body: { action: 'refresh', categories: ['general','technology','business','health','sports','politics'], limit: 120 }
+        })
+      }
       
       // Reset recommendations first
       await refreshRecommendations()
