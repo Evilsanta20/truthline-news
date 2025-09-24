@@ -98,6 +98,9 @@ verify_jwt = false
 [functions.enhanced-data-sync]
 verify_jwt = false
 
+[functions.fresh-article-enhancer]
+verify_jwt = false
+
 [functions.mood-processor]
 verify_jwt = false
 
