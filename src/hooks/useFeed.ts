@@ -192,11 +192,22 @@ export const useFeed = (
     }
   }, [initialLimit, recommendations, settings])
 
-  // Initial load and refresh triggers  
+  // Initial load with proper restart handling  
   useEffect(() => {
-    if (userId) {
+    if (userId && !loading) {
       console.log('🔄 Loading initial articles for user:', userId)
-      fetchArticles(false)
+      
+      // Reset state on restart
+      setArticles([])
+      setError(null)
+      setHasMore(true)
+      
+      // Small delay to ensure proper initialization
+      const timeoutId = setTimeout(() => {
+        fetchArticles(false)
+      }, 100)
+      
+      return () => clearTimeout(timeoutId)
     }
   }, [userId]) // Remove fetchArticles from deps to prevent infinite loop
 
@@ -208,14 +219,19 @@ export const useFeed = (
     }
   }, [recommendations])
 
-  // Auto refresh
+  // Auto refresh with proper restart handling
   useEffect(() => {
-    if (!settings.autoRefresh || !userId) return
+    if (!settings.autoRefresh || !userId || loading) return
+
+    // Clear any existing timeout
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current)
+    }
 
     const interval = (settings.refreshInterval || refreshInterval) * 1000
     
     refreshTimeoutRef.current = setTimeout(() => {
-      // Use a stable version that doesn't recreate
+      console.log('🔄 Auto-refresh triggered')
       fetchArticles(false)
     }, interval)
 
@@ -224,7 +240,7 @@ export const useFeed = (
         clearTimeout(refreshTimeoutRef.current)
       }
     }
-  }, [settings.autoRefresh, settings.refreshInterval, refreshInterval, userId]) // Remove fetchArticles from deps
+  }, [settings.autoRefresh, settings.refreshInterval, refreshInterval, userId, loading]) // Add loading to prevent overlapping calls
 
   const loadMore = useCallback(async () => {
     if (!hasMore || loading) return
@@ -232,10 +248,23 @@ export const useFeed = (
   }, [hasMore, loading, fetchArticles])
 
   const refresh = useCallback(async () => {
-    console.log('🔄 Manual refresh triggered')
-    await refreshRecommendations()
-    await fetchArticles(false)
-    console.log('✅ Refresh completed')
+    try {
+      console.log('🔄 Manual refresh triggered')
+      setError(null)
+      
+      // Reset recommendations first
+      await refreshRecommendations()
+      
+      // Clear current articles and refetch
+      setArticles([])
+      await fetchArticles(false)
+      
+      console.log('✅ Refresh completed')
+    } catch (error) {
+      console.error('Refresh failed:', error)
+      setError(error as Error)
+      throw error
+    }
   }, [fetchArticles, refreshRecommendations])
 
   const updateSettings = useCallback(async (newSettings: Partial<FeedSettings>) => {

@@ -86,13 +86,13 @@ verify_jwt = false
 [functions.cybotic-news-system]
 verify_jwt = false
 
-[functions.auto-news-refresh]
-verify_jwt = false
-
 [functions.lovable-reel-transformer]
 verify_jwt = false
 
 [functions.lovable-content-refiner]
+verify_jwt = false
+
+[functions.auto-news-refresh]
 verify_jwt = false
 
 [functions.mood-processor]

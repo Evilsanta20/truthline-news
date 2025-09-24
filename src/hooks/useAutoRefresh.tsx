@@ -49,28 +49,6 @@ export const useAutoRefresh = ({
     }
   }, [])
 
-  // Auto-refresh countdown timer
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setNextRefresh(prev => {
-        if (prev <= 1) {
-          fetchNewArticles()
-          return refreshInterval // Reset timer
-        }
-        return prev - 1
-      })
-    }, 1000)
-
-    return () => clearInterval(interval)
-  }, [refreshInterval])
-
-  // Format countdown display
-  const formatCountdown = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
-
   // Fetch new articles using the since parameter
   const fetchNewArticles = useCallback(async () => {
     if (loading) return
@@ -117,6 +95,38 @@ export const useAutoRefresh = ({
       setLoading(false)
     }
   }, [userId, latestTimestamp, isAtTop, loading, onNewArticles, onRefreshComplete])
+
+  // Auto-refresh countdown timer with proper restart handling
+  useEffect(() => {
+    // Initialize countdown if not set
+    if (nextRefresh === 0) {
+      setNextRefresh(refreshInterval)
+    }
+
+    const interval = setInterval(() => {
+      setNextRefresh(prev => {
+        if (prev <= 1) {
+          fetchNewArticles()
+          return refreshInterval // Reset timer
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [refreshInterval, fetchNewArticles])
+
+  // Reset timer when component mounts or userId changes
+  useEffect(() => {
+    setNextRefresh(refreshInterval)
+  }, [userId, refreshInterval])
+
+  // Format countdown display
+  const formatCountdown = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
 
   // Initial load of articles
   const loadInitialArticles = useCallback(async () => {
@@ -183,10 +193,27 @@ export const useAutoRefresh = ({
     )
   }, [])
 
-  // Load initial articles on mount
+  // Load initial articles on mount with retry mechanism
   useEffect(() => {
-    loadInitialArticles()
-  }, [loadInitialArticles])
+    let retryCount = 0
+    const maxRetries = 3
+    
+    const loadWithRetry = async () => {
+      try {
+        await loadInitialArticles()
+      } catch (error) {
+        console.error(`Failed to load initial articles (attempt ${retryCount + 1}):`, error)
+        if (retryCount < maxRetries) {
+          retryCount++
+          setTimeout(loadWithRetry, 2000 * retryCount) // Exponential backoff
+        }
+      }
+    }
+    
+    if (userId) {
+      loadWithRetry()
+    }
+  }, [userId]) // Remove loadInitialArticles to prevent recreation
 
   return {
     articles,
