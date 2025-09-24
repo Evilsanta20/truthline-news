@@ -33,19 +33,39 @@ export const useFreshArticleSystem = (options: FreshArticleOptions = {}) => {
       const { data, error } = await supabase.functions.invoke('fresh-article-enhancer', {
         body: { 
           action: 'refresh_and_enhance',
-          categories: ['general', 'technology', 'business', 'health', 'sports', 'politics', 'entertainment', 'science']
+          categories: ['general', 'technology', 'business'] // keep it light to avoid timeouts
         }
       })
 
-      if (error) {
-        throw new Error(error.message || 'Failed to refresh articles')
+      let result = data || {}
+
+      if (error || !result) {
+        console.warn('fresh-article-enhancer failed, falling back to cybotic-news-system:', error?.message)
+        updateProgress('🛰️ Falling back to direct fresh fetch...')
+
+        const fallback = await supabase.functions.invoke('cybotic-news-system', {
+          body: {
+            action: 'refresh',
+            categories: ['general', 'technology', 'business'],
+            limit: 120
+          }
+        })
+
+        if (fallback.error) {
+          throw new Error(fallback.error.message || 'Failed to fetch fresh articles')
+        }
+
+        result = {
+          new_articles_fetched: fallback.data?.total_articles || 0,
+          articles_enhanced: 0,
+          via: 'fallback-cybotic'
+        }
       }
 
-      const result = data || {}
       updateProgress('✅ Article refresh completed successfully!')
 
       toast.success(`🎉 Articles refreshed and enhanced!`, {
-        description: `${result.new_articles_fetched || 0} new articles fetched, ${result.articles_enhanced || 0} enhanced with AI`,
+        description: `${result.new_articles_fetched || 0} new articles fetched${result.articles_enhanced ? ", " + result.articles_enhanced + " enhanced" : ''}`,
         duration: 10000
       })
 
