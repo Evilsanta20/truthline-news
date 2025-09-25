@@ -45,7 +45,7 @@ serve(async (req) => {
       .order('created_at', { ascending: false })
       .limit(200);
 
-    // Build article query with optional since filter
+    // Build article query with strict freshness window
     let articleQuery = supabase
       .from('articles')
       .select(`
@@ -53,15 +53,14 @@ serve(async (req) => {
         categories (name, color)
       `);
 
-    if (since) {
-      // For incremental updates - get articles published after since timestamp
-      articleQuery = articleQuery.gte('published_at', since);
-    } else {
-      // For initial load - get articles from last 30 days (more lenient for demo)
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      articleQuery = articleQuery.gte('created_at', thirtyDaysAgo.toISOString());
-    }
+    // Determine effective 'since' with a 48h clamp to avoid stale feeds
+    const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+    const effectiveSince = since
+      ? new Date(Math.max(new Date(since).getTime(), Date.now() - 48 * 60 * 60 * 1000)).toISOString()
+      : fortyEightHoursAgo;
+
+    // Prefer last_verified_at to capture latest validated items
+    articleQuery = articleQuery.gte('last_verified_at', effectiveSince);
 
     // Apply content quality filters
     articleQuery = articleQuery
@@ -75,8 +74,10 @@ serve(async (req) => {
     }
 
     let { data: articles } = await articleQuery
-      .order(since ? 'published_at' : 'created_at', { ascending: false })
-      .limit(since ? 100 : 300);
+      .order('last_verified_at', { ascending: false })
+      .order('published_at', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(since ? 150 : 300);
 
     // If no articles found with date filter, try without date filter as fallback
     if (!articles || articles.length === 0) {
@@ -90,6 +91,8 @@ serve(async (req) => {
         .gte('content_quality_score', 0.3)
         .gte('credibility_score', 0.2)
         .lte('bias_score', 0.9)
+        .order('last_verified_at', { ascending: false })
+        .order('published_at', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(100);
       
@@ -227,7 +230,7 @@ serve(async (req) => {
 
     // Get latest timestamp for incremental updates
     const latestTimestamp = recommendations.length > 0 
-      ? recommendations[0].published_at || recommendations[0].created_at
+      ? recommendations[0].last_verified_at || recommendations[0].published_at || recommendations[0].created_at
       : new Date().toISOString();
 
     // Only store recommendations if not an incremental update
