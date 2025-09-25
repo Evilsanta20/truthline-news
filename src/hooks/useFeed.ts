@@ -208,15 +208,12 @@ export const useFeed = (
       
       const init = async () => {
         try {
-          // First, populate with fresh articles immediately
-          console.log('🚀 Populating with fresh articles...')
-          await supabase.functions.invoke('direct-news-populator')
+          // First, populate with fresh articles immediately using the reliable fetcher
+          console.log('🚀 Using reliable news fetcher for fresh content...')
+          await supabase.functions.invoke('reliable-news-fetcher')
           
-          // Import refresh service inline to avoid circular dependencies
-          const { refreshService } = await import('@/utils/refreshService')
-          
-          // Perform comprehensive health check and recovery
-          await refreshService.performHealthCheckAndRecover()
+          // Short delay to allow DB update
+          await new Promise(resolve => setTimeout(resolve, 1000))
           
         } catch (e) {
           console.error('Initialization error:', e)

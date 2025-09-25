@@ -107,6 +107,9 @@ verify_jwt = false
 [functions.direct-news-populator]
 verify_jwt = false
 
+[functions.reliable-news-fetcher]
+verify_jwt = false
+
 [edge_runtime]
 policy = "per_function"
 inspector_port = 54330
