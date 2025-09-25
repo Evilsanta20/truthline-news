@@ -1,3 +1,4 @@
+// @ts-nocheck
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.53.0';
@@ -52,8 +53,8 @@ serve(async (req) => {
           .single();
 
         if (article) {
-          const categorySlug = article.categories?.slug;
-          const topicTags = article.topic_tags || [];
+          const categorySlug = (article.categories as any)?.slug;
+          const topicTags: string[] = article.topic_tags || [];
 
           // Score interactions: view=1, bookmark=3, like=2, share=5
           const score = interaction.interaction_type === 'view' ? 1 :
@@ -63,12 +64,12 @@ serve(async (req) => {
 
           // Add to topic scores
           if (categorySlug) {
-            topicScores[categorySlug] = (topicScores[categorySlug] || 0) + score;
+            (topicScores as any)[categorySlug] = ((topicScores as any)[categorySlug] || 0) + score;
           }
           
           // Add topic tags to scores
-          topicTags.forEach(tag => {
-            topicScores[tag] = (topicScores[tag] || 0) + score * 0.5;
+          topicTags.forEach((tag: string) => {
+            (topicScores as any)[tag] = ((topicScores as any)[tag] || 0) + score * 0.5;
           });
         }
       }
@@ -76,8 +77,8 @@ serve(async (req) => {
 
     // Include preferred topics from user preferences
     if (preferences?.preferred_topics) {
-      preferences.preferred_topics.forEach(topic => {
-        topicScores[topic] = (topicScores[topic] || 0) + 5; // High preference score
+      preferences.preferred_topics.forEach((topic: string) => {
+        (topicScores as any)[topic] = ((topicScores as any)[topic] || 0) + 5; // High preference score
       });
     }
 
@@ -111,16 +112,16 @@ serve(async (req) => {
       recommendationScore += (article.engagement_score || 0) * 0.1;
       
       // Category preference score
-      const categorySlug = article.categories?.slug;
-      if (categorySlug && topicScores[categorySlug]) {
-        recommendationScore += topicScores[categorySlug] * 2;
+      const categorySlug = (article.categories as any)?.slug;
+      if (categorySlug && (topicScores as any)[categorySlug]) {
+        recommendationScore += (topicScores as any)[categorySlug] * 2;
       }
       
       // Topic tags score
       if (article.topic_tags) {
-        article.topic_tags.forEach(tag => {
-          if (topicScores[tag]) {
-            recommendationScore += topicScores[tag] * 1.5;
+        article.topic_tags.forEach((tag: string) => {
+          if ((topicScores as any)[tag]) {
+            recommendationScore += (topicScores as any)[tag] * 1.5;
           }
         });
       }
@@ -154,12 +155,12 @@ serve(async (req) => {
     }
 
     console.log(`Generated ${recommendations.length} recommendations for user ${userId}`);
-    console.log('Top topic scores:', Object.entries(topicScores).sort(([,a], [,b]) => b - a).slice(0, 5));
+    console.log('Top topic scores:', Object.entries(topicScores).sort(([,a], [,b]) => (b as number) - (a as number)).slice(0, 5));
 
     return new Response(JSON.stringify({
       recommendations,
       userTopics: Object.entries(topicScores)
-        .sort(([,a], [,b]) => b - a)
+        .sort(([,a], [,b]) => (b as number) - (a as number))
         .slice(0, 10)
         .map(([topic, score]) => ({ topic, score })),
       totalInteractions: interactions?.length || 0
@@ -169,7 +170,7 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in AI recommendations:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: (error as Error).message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
