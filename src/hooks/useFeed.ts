@@ -213,6 +213,27 @@ export const useFeed = (
           
           // Perform comprehensive health check and recovery
           await refreshService.performHealthCheckAndRecover()
+
+          // If still stale, force a stronger fetch via Fresh Article Enhancer
+          try {
+            const { data: latest } = await supabase
+              .from('articles')
+              .select('created_at')
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single()
+            const hoursOld = latest?.created_at
+              ? (Date.now() - new Date(latest.created_at as any).getTime()) / 36e5
+              : 24
+            if (hoursOld > 2) {
+              console.warn('⚠️ Data still stale on init, invoking Fresh Article Enhancer...')
+              await supabase.functions.invoke('fresh-article-enhancer', {
+                body: { action: 'refresh_and_enhance', limit: 150 }
+              })
+            }
+          } catch (e) {
+            console.warn('Init staleness check/enhancer fallback error:', (e as Error).message)
+          }
           
         } catch (e) {
           console.error('Health check error:', e)
@@ -245,7 +266,7 @@ export const useFeed = (
     
     refreshTimeoutRef.current = setTimeout(() => {
       console.log('🔄 Auto-refresh triggered')
-      fetchArticles(false)
+      refresh()
     }, interval)
 
     return () => {
@@ -270,6 +291,27 @@ export const useFeed = (
       
       // Perform health check and auto-recovery
       await refreshService.performHealthCheckAndRecover()
+
+      // If still stale, force a stronger fetch via Fresh Article Enhancer
+      try {
+        const { data: latest } = await supabase
+          .from('articles')
+          .select('created_at')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single()
+        const hoursOld = latest?.created_at
+          ? (Date.now() - new Date(latest.created_at as any).getTime()) / 36e5
+          : 24
+        if (hoursOld > 2) {
+          console.warn('⚠️ Data still stale after recovery, invoking Fresh Article Enhancer...')
+          await supabase.functions.invoke('fresh-article-enhancer', {
+            body: { action: 'refresh_and_enhance', limit: 150 }
+          })
+        }
+      } catch (e) {
+        console.warn('Staleness check/enhancer fallback error:', (e as Error).message)
+      }
       
       // Reset recommendations first
       await refreshRecommendations()
