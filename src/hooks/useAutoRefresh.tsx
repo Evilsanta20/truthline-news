@@ -86,6 +86,26 @@ export const useAutoRefresh = ({
           setPendingArticles(prev => [...newArticles, ...prev])
           onNewArticles?.(newArticles.length)
         }
+      } else if (latestTimestamp) {
+        // Fallback: fetch directly from DB since latest timestamp
+        const { data: dbNew, error: dbErr } = await supabase
+          .from('articles')
+          .select('*')
+          .gt('last_verified_at', latestTimestamp)
+          .order('last_verified_at', { ascending: false })
+          .limit(30)
+        
+        if (!dbErr && (dbNew?.length || 0) > 0) {
+          const mapped = (dbNew as any[]).map(a => ({ ...a, recommendation_score: a.recommendation_score ?? Math.random() * 100 }))
+          if (isAtTop) {
+            setArticles(prev => [...mapped, ...prev])
+            setPendingArticles([])
+          } else {
+            setPendingArticles(prev => [...mapped, ...prev])
+            onNewArticles?.(mapped.length)
+          }
+          setLatestTimestamp(new Date().toISOString())
+        }
       }
 
       onRefreshComplete?.()
@@ -148,8 +168,23 @@ export const useAutoRefresh = ({
       }
 
       const initialArticles = data?.articles || []
-      setArticles(initialArticles)
-      setLatestTimestamp(data?.latest_timestamp || new Date().toISOString())
+      if (initialArticles.length > 0) {
+        setArticles(initialArticles)
+        setLatestTimestamp(data?.latest_timestamp || new Date().toISOString())
+      } else {
+        // Fallback: load recent articles directly from DB
+        const { data: dbInitial, error: dbErr } = await supabase
+          .from('articles')
+          .select('*')
+          .order('last_verified_at', { ascending: false })
+          .order('published_at', { ascending: false })
+          .limit(30)
+        if (!dbErr) {
+          const mapped = (dbInitial as any[] || []).map(a => ({ ...a, recommendation_score: a.recommendation_score ?? Math.random() * 100 }))
+          setArticles(mapped)
+          setLatestTimestamp(new Date().toISOString())
+        }
+      }
       
     } catch (error) {
       console.error('Error in loadInitialArticles:', error)
