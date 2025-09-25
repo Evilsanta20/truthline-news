@@ -101,24 +101,12 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
     userId,
     refreshInterval: autoRefresh ? refreshInterval : 0, // Disable if autoRefresh is off
     onNewArticles: (count) => {
-      if (!isAtTop) {
-        toast({
-          title: `${count} new articles available`,
-          description: "Click to load new stories",
-          action: (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={applyPendingArticles}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              <ArrowUp className="w-4 h-4 mr-1" />
-              Load New
-            </Button>
-          ),
-          duration: 10000, // Show for 10 seconds
-        })
-      }
+      // Simple toast notification without custom button
+      toast({
+        title: `${count} new articles available`,
+        description: "Scroll to top or refresh to see new stories",
+        duration: 5000,
+      })
     },
     onRefreshComplete: () => {
       setLastRefresh(new Date())
@@ -363,6 +351,29 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Floating "Load New" Banner */}
+      {pendingCount > 0 && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-in slide-in-from-top duration-300">
+          <div className="bg-primary text-primary-foreground px-6 py-3 rounded-full shadow-lg border border-primary/20 backdrop-blur-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-primary-foreground rounded-full animate-pulse" />
+                <span className="font-medium">{pendingCount} new articles available</span>
+              </div>
+              <Button
+                onClick={applyPendingArticles}
+                size="sm"
+                variant="secondary"
+                className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 h-8 px-3"
+              >
+                <ArrowUp className="w-4 h-4 mr-1" />
+                Load New
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header with Personalization Stats */}
       <div className="mb-8 scroll-animation">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
