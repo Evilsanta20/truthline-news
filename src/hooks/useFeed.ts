@@ -147,7 +147,8 @@ export const useFeed = (
           *,
           categories (name, color, slug)
         `)
-        .order('created_at', { ascending: false })
+        .order('last_verified_at', { ascending: false })
+        .order('published_at', { ascending: false })
 
       // Apply quality filters
       query = query
