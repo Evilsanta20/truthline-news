@@ -126,25 +126,79 @@ class RefreshService {
     return timeSince === null || timeSince > intervalMs
   }
 
-  // Force restart the auto-refresh mechanism
+  // Force restart the auto-refresh mechanism with dynamic recovery
   async restartAutoRefresh(): Promise<void> {
     try {
       this.options.onProgress?.('Restarting auto-refresh system...')
       
-      const { data, error } = await supabase.functions.invoke('auto-news-refresh', {
-        body: { force_restart: true }
+      // First try enhanced data sync for comprehensive refresh
+      const { data: enhancedData, error: enhancedError } = await supabase.functions.invoke('enhanced-data-sync', {
+        body: { 
+          action: 'sync',
+          force_fresh: true,
+          cleanup_old: true
+        }
       })
 
-      if (error) {
-        throw new Error(`Auto-refresh restart failed: ${error.message}`)
-      }
+      if (enhancedError) {
+        console.warn('Enhanced sync failed, falling back to auto-refresh:', enhancedError)
+        
+        // Fallback to auto-refresh
+        const { data, error } = await supabase.functions.invoke('auto-news-refresh', {
+          body: { force_restart: true }
+        })
 
-      this.options.onProgress?.('Auto-refresh system restarted successfully')
-      console.log('✅ Auto-refresh system restarted:', data)
+        if (error) {
+          throw new Error(`Auto-refresh restart failed: ${error.message}`)
+        }
+        
+        this.options.onProgress?.('Auto-refresh system restarted successfully')
+        console.log('✅ Auto-refresh system restarted:', data)
+      } else {
+        this.options.onProgress?.('Enhanced data sync completed successfully')
+        console.log('✅ Enhanced data sync completed:', enhancedData)
+      }
     } catch (error) {
       console.error('Failed to restart auto-refresh:', error)
       this.options.onError?.(error as Error)
       throw error
+    }
+  }
+
+  // Dynamic system health check and auto-recovery
+  async performHealthCheckAndRecover(): Promise<void> {
+    try {
+      this.options.onProgress?.('Performing system health check...')
+      
+      const isHealthy = await this.checkServiceHealth()
+      
+      if (!isHealthy) {
+        this.options.onProgress?.('System unhealthy, initiating recovery...')
+        await this.restartAutoRefresh()
+      }
+      
+      // Check data freshness and refresh if needed
+      const { data: freshCheck } = await supabase
+        .from('articles')
+        .select('created_at')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+      
+      const latestArticle = freshCheck?.created_at
+      const hoursOld = latestArticle ? 
+        (Date.now() - new Date(latestArticle).getTime()) / (1000 * 60 * 60) : 
+        24
+      
+      if (hoursOld > 2) {
+        this.options.onProgress?.('Data is stale, refreshing...')
+        await this.restartAutoRefresh()
+      }
+      
+      this.options.onProgress?.('System health check completed')
+    } catch (error) {
+      console.error('Health check failed:', error)
+      this.options.onError?.(error as Error)
     }
   }
 

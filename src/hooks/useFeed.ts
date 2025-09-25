@@ -195,7 +195,7 @@ export const useFeed = (
     }
   }, [initialLimit, recommendations, settings])
 
-  // Initial load with proper restart handling  
+  // Initial load with proper restart handling and dynamic recovery
   useEffect(() => {
     if (userId && !loading) {
       console.log('🔄 Loading initial articles for user:', userId)
@@ -207,19 +207,14 @@ export const useFeed = (
       
       const init = async () => {
         try {
-          // Force a quick fresh sync before first render to avoid stale feed
-          console.log('⚡ Ensuring fresh feed via enhanced-data-sync...')
-          const { data, error } = await supabase.functions.invoke('enhanced-data-sync', {
-            body: { action: 'sync', force_fresh: true, cleanup_old: true }
-          })
-          if (error) {
-            console.warn('enhanced-data-sync failed, falling back to cybotic-news-system:', error.message)
-            await supabase.functions.invoke('cybotic-news-system', {
-              body: { action: 'refresh', categories: ['general','technology','business','health','sports','politics'], limit: 120 }
-            })
-          }
+          // Import refresh service inline to avoid circular dependencies
+          const { refreshService } = await import('@/utils/refreshService')
+          
+          // Perform comprehensive health check and recovery
+          await refreshService.performHealthCheckAndRecover()
+          
         } catch (e) {
-          console.error('Fresh sync error:', e)
+          console.error('Health check error:', e)
         } finally {
           await fetchArticles(false)
         }
@@ -266,21 +261,14 @@ export const useFeed = (
 
   const refresh = useCallback(async () => {
     try {
-      console.log('🔄 Manual refresh triggered')
+      console.log('🔄 Manual refresh triggered with dynamic system check')
       setError(null)
       
-      // Trigger fresh sync first
-      try {
-        const { error } = await supabase.functions.invoke('enhanced-data-sync', {
-          body: { action: 'sync', force_fresh: true, cleanup_old: true }
-        })
-        if (error) throw new Error(error.message)
-      } catch (e) {
-        console.warn('enhanced-data-sync failed on refresh, falling back to cybotic-news-system:', (e as Error).message)
-        await supabase.functions.invoke('cybotic-news-system', {
-          body: { action: 'refresh', categories: ['general','technology','business','health','sports','politics'], limit: 120 }
-        })
-      }
+      // Import refresh service inline to avoid circular dependencies
+      const { refreshService } = await import('@/utils/refreshService')
+      
+      // Perform health check and auto-recovery
+      await refreshService.performHealthCheckAndRecover()
       
       // Reset recommendations first
       await refreshRecommendations()
@@ -289,7 +277,7 @@ export const useFeed = (
       setArticles([])
       await fetchArticles(false)
       
-      console.log('✅ Refresh completed')
+      console.log('✅ Dynamic refresh completed')
     } catch (error) {
       console.error('Refresh failed:', error)
       setError(error as Error)
