@@ -74,29 +74,20 @@ export const useAutoRefresh = ({
       const newArticles = data?.articles || []
       
       if (newArticles.length > 0) {
-        // Update latest timestamp
-        setLatestTimestamp(data.latest_timestamp)
-        
-        if (isAtTop) {
-          // User is at top - insert new articles directly
-          setArticles(prev => [...newArticles, ...prev])
-          setPendingArticles([])
-        } else {
-          // User is scrolled down - add to pending queue
-          setPendingArticles(prev => [...newArticles, ...prev])
-          onNewArticles?.(newArticles.length)
-        }
-      } else if (latestTimestamp) {
-        // Fallback: fetch directly from DB since latest timestamp
-        const { data: dbNew, error: dbErr } = await supabase
-          .from('articles')
-          .select('*')
-          .gt('last_verified_at', latestTimestamp)
-          .order('last_verified_at', { ascending: false })
-          .limit(30)
-        
-        if (!dbErr && (dbNew?.length || 0) > 0) {
-          const mapped = (dbNew as any[]).map(a => ({ ...a, recommendation_score: a.recommendation_score ?? Math.random() * 100 }))
+        // If newest published article is too old, use DB latest instead
+        const newestPub = newArticles
+          .map((a: any) => a.published_at || a.created_at)
+          .filter(Boolean)
+          .sort((a: string, b: string) => new Date(b).getTime() - new Date(a).getTime())[0]
+        const hoursOld = newestPub ? (Date.now() - new Date(newestPub).getTime()) / 36e5 : 24
+        if (hoursOld > 12) {
+          const { data: dbLatest } = await supabase
+            .from('articles')
+            .select('*')
+            .order('last_verified_at', { ascending: false })
+            .order('published_at', { ascending: false })
+            .limit(30)
+          const mapped = (dbLatest as any[] || []).map(a => ({ ...a, recommendation_score: a.recommendation_score ?? Math.random() * 100 }))
           if (isAtTop) {
             setArticles(prev => [...mapped, ...prev])
             setPendingArticles([])
@@ -105,6 +96,55 @@ export const useAutoRefresh = ({
             onNewArticles?.(mapped.length)
           }
           setLatestTimestamp(new Date().toISOString())
+        } else {
+          // Update latest timestamp
+          setLatestTimestamp(data.latest_timestamp)
+          
+          if (isAtTop) {
+            setArticles(prev => [...newArticles, ...prev])
+            setPendingArticles([])
+          } else {
+            setPendingArticles(prev => [...newArticles, ...prev])
+            onNewArticles?.(newArticles.length)
+          }
+        }
+      } else {
+        // Fallback A: DB since last_verified_at > latestTimestamp
+        if (latestTimestamp) {
+          const { data: dbNew } = await supabase
+            .from('articles')
+            .select('*')
+            .gt('last_verified_at', latestTimestamp)
+            .order('last_verified_at', { ascending: false })
+            .limit(30)
+          if ((dbNew?.length || 0) > 0) {
+            const mapped = (dbNew as any[]).map(a => ({ ...a, recommendation_score: a.recommendation_score ?? Math.random() * 100 }))
+            if (isAtTop) {
+              setArticles(prev => [...mapped, ...prev])
+              setPendingArticles([])
+            } else {
+              setPendingArticles(prev => [...mapped, ...prev])
+              onNewArticles?.(mapped.length)
+            }
+            setLatestTimestamp(new Date().toISOString())
+          } else {
+            // Fallback B: Just take the latest verified/published items
+            const { data: dbLatest } = await supabase
+              .from('articles')
+              .select('*')
+              .order('last_verified_at', { ascending: false })
+              .order('published_at', { ascending: false })
+              .limit(30)
+            const mapped = (dbLatest as any[] || []).map(a => ({ ...a, recommendation_score: a.recommendation_score ?? Math.random() * 100 }))
+            if (isAtTop) {
+              setArticles(prev => [...mapped, ...prev])
+              setPendingArticles([])
+            } else {
+              setPendingArticles(prev => [...mapped, ...prev])
+              onNewArticles?.(mapped.length)
+            }
+            setLatestTimestamp(new Date().toISOString())
+          }
         }
       }
 
@@ -169,8 +209,26 @@ export const useAutoRefresh = ({
 
       const initialArticles = data?.articles || []
       if (initialArticles.length > 0) {
-        setArticles(initialArticles)
-        setLatestTimestamp(data?.latest_timestamp || new Date().toISOString())
+        // If newest published article is too old, fall back to DB latest
+        const newestPub = initialArticles
+          .map((a: any) => a.published_at || a.created_at)
+          .filter(Boolean)
+          .sort((a: string, b: string) => new Date(b).getTime() - new Date(a).getTime())[0]
+        const hoursOld = newestPub ? (Date.now() - new Date(newestPub).getTime()) / 36e5 : 24
+        if (hoursOld > 12) {
+          const { data: dbInitial } = await supabase
+            .from('articles')
+            .select('*')
+            .order('last_verified_at', { ascending: false })
+            .order('published_at', { ascending: false })
+            .limit(30)
+          const mapped = (dbInitial as any[] || []).map(a => ({ ...a, recommendation_score: a.recommendation_score ?? Math.random() * 100 }))
+          setArticles(mapped)
+          setLatestTimestamp(new Date().toISOString())
+        } else {
+          setArticles(initialArticles)
+          setLatestTimestamp(data?.latest_timestamp || new Date().toISOString())
+        }
       } else {
         // Fallback: load recent articles directly from DB
         const { data: dbInitial, error: dbErr } = await supabase
