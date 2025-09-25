@@ -91,9 +91,9 @@ export const useFeed = (
 
       // Use personalized recommendations first
       if (recommendations && recommendations.length > 0) {
-        const cutoffMs = Date.now() - 48 * 60 * 60 * 1000 // 48 hours
+        const cutoffMs = Date.now() - 7 * 24 * 60 * 60 * 1000 // 7 days - more reasonable for demo
         const filteredArticles = recommendations.filter(article => {
-          // Freshness filter
+          // Freshness filter - relaxed for better user experience
           const ts = new Date((article as any).published_at || (article as any).created_at || 0).getTime()
           if (!ts || ts < cutoffMs) return false
 
@@ -143,7 +143,7 @@ export const useFeed = (
 
       // Fallback to direct database query if no recommendations
       console.log('📝 Fetching articles from database directly')
-      const freshnessCutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
+      const freshnessCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
       let query = supabase
         .from('articles')
         .select(`

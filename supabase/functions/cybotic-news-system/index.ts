@@ -12,59 +12,7 @@ interface NewsAPI {
   fetch: (category: string, limit: number) => Promise<any[]>
 }
 
-interface ProcessedArticle {
-  title: string
-  content: string
-  source: string
-  url: string
-  timestamp: string
-  category: string
-  content_hash: string
-  source_api: string
-}
-
 // News API implementations
-class IndiaToday {
-  static async fetch(category: string, limit: number): Promise<any[]> {
-    try {
-      // Using RSS feed for India Today since they don't have a public API
-      const rssUrl = `https://www.indiatoday.in/rss/${category === 'general' ? 'home' : category}`
-      const response = await fetch(rssUrl, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; NewsAggregator/1.0)' }
-      })
-      
-      if (!response.ok) return []
-      
-      const rssText = await response.text()
-      const articles = parseRSSFeed(rssText, 'India Today')
-      return articles.slice(0, limit)
-    } catch (error) {
-      console.warn('India Today fetch failed:', error)
-      return []
-    }
-  }
-}
-
-class Reuters {
-  static async fetch(category: string, limit: number): Promise<any[]> {
-    try {
-      const rssUrl = `https://feeds.reuters.com/reuters/${category === 'general' ? 'world' : category}News`
-      const response = await fetch(rssUrl, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; NewsAggregator/1.0)' }
-      })
-      
-      if (!response.ok) return []
-      
-      const rssText = await response.text()
-      const articles = parseRSSFeed(rssText, 'Reuters')
-      return articles.slice(0, limit)
-    } catch (error) {
-      console.warn('Reuters fetch failed:', error)
-      return []
-    }
-  }
-}
-
 class NewsAPISource {
   static async fetch(category: string, limit: number): Promise<any[]> {
     const apiKey = Deno.env.get('NEWS_API_KEY')
@@ -103,56 +51,21 @@ class NewsAPISource {
   }
 }
 
-class FirecrawlAPI {
+class Reuters {
   static async fetch(category: string, limit: number): Promise<any[]> {
-    const apiKey = Deno.env.get('FIRECRAWL_API_KEY')
-    if (!apiKey) return []
-    
     try {
-      const sources = getFirecrawlSources(category)
-      const articles: any[] = []
+      const rssUrl = `https://feeds.reuters.com/reuters/${category === 'general' ? 'world' : category}News`
+      const response = await fetch(rssUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; NewsAggregator/1.0)' }
+      })
       
-      for (const source of sources.slice(0, 2)) {
-        try {
-          const response = await fetch('https://api.firecrawl.dev/v0/scrape', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${apiKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              url: source.url,
-              pageOptions: {
-                onlyMainContent: true
-              },
-              extractorOptions: {
-                mode: 'llm-extraction',
-                extractionPrompt: 'Extract news articles with title, content, and publication date'
-              }
-            })
-          })
-          
-          if (response.ok) {
-            const data = await response.json()
-            if (data.data?.content) {
-              articles.push({
-                title: `Breaking News from ${source.name}`,
-                content: data.data.content.substring(0, 2000),
-                url: source.url,
-                sourceName: source.name,
-                publishedAt: new Date().toISOString(),
-                category: category
-              })
-            }
-          }
-        } catch (error) {
-          console.warn(`Firecrawl ${source.name} failed:`, error)
-        }
-      }
+      if (!response.ok) return []
       
-      return articles.slice(0, Math.min(limit, 5))
+      const rssText = await response.text()
+      const articles = parseRSSFeed(rssText, 'Reuters')
+      return articles.slice(0, limit)
     } catch (error) {
-      console.warn('Firecrawl fetch failed:', error)
+      console.warn('Reuters fetch failed:', error)
       return []
     }
   }
@@ -167,9 +80,7 @@ class CyboticNewsSystem {
     this.supabase = supabaseClient
     this.newsAPIs = [
       { name: 'NewsAPI', priority: 1, fetch: NewsAPISource.fetch },
-      { name: 'Reuters', priority: 2, fetch: Reuters.fetch },
-      { name: 'India Today', priority: 3, fetch: IndiaToday.fetch },
-      { name: 'Firecrawl', priority: 4, fetch: FirecrawlAPI.fetch }
+      { name: 'Reuters', priority: 2, fetch: Reuters.fetch }
     ]
   }
   
@@ -194,7 +105,7 @@ class CyboticNewsSystem {
           console.log(`${api.name}: Retrieved ${articles.length} articles in ${apiExecutionTime}ms`)
           
           if (articles.length > 0) {
-            const stored = await this.storeArticles(articles, api.name, category, useSmartUpsert)
+            const stored = await this.storeArticles(articles, api.name, category)
             totalFetched += articles.length
             totalStored += stored
             
@@ -220,88 +131,37 @@ class CyboticNewsSystem {
     await this.logFetch('SYSTEM', 'ALL', totalFetched, totalStored, 'success', null, totalExecutionTime)
   }
   
-  private async storeArticles(articles: any[], sourceAPI: string, category: string, useSmartUpsert = false): Promise<number> {
+  private async storeArticles(articles: any[], sourceAPI: string, category: string): Promise<number> {
     let stored = 0
     
     for (const article of articles) {
       try {
-        if (useSmartUpsert) {
-          // Use the new smart upsert function for persistence and deduplication
-          const { data: articleId, error: upsertError } = await this.supabase.rpc('upsert_article', {
-            p_title: article.title?.substring(0, 500) || 'Untitled',
-            p_url: article.url || `#${Date.now()}`,
-            p_description: (article.description || article.content || '').substring(0, 1000),
-            p_content: article.content || article.description || '',
-            p_url_to_image: article.urlToImage || null,
-            p_source_name: article.sourceName || sourceAPI,
-            p_author: article.author || null,
-            p_published_at: article.publishedAt ? new Date(article.publishedAt).toISOString() : null,
-            p_topic_tags: this.extractTopicTags(article.title, article.description),
-            p_bias_score: Math.random() * 0.4 + 0.3, // Random between 0.3-0.7
-            p_credibility_score: Math.random() * 0.3 + 0.6, // Random between 0.6-0.9
-            p_sentiment_score: Math.random() * 0.6 + 0.2, // Random between 0.2-0.8
-            p_content_quality_score: this.calculateContentQuality(article),
-            p_engagement_score: 0
-          })
-          
-          if (upsertError) {
-            console.error('Upsert error:', upsertError)
-            continue
-          }
-          
-          if (articleId) {
-            stored++
-            console.log(`✅ Upserted: ${article.title.substring(0, 50)}...`)
-          }
-        } else {
-          // Legacy storage method
-          const contentHash = await this.generateContentHash(article.title + (article.url || ''))
-          
-          // Check for duplicates by title + URL
-          const { data: existing } = await this.supabase
-            .from('articles')
-            .select('id')
-            .or(`content_hash.eq.${contentHash},and(title.eq."${article.title.replace(/"/g, '\\"')}",url.eq."${article.url}")`)
-            .single()
-          
-          if (existing) {
-            console.log(`Duplicate found: ${article.title.substring(0, 50)}...`)
-            continue
-          }
-          
-          // Prepare article data
-          const articleData = {
-            title: article.title.substring(0, 500),
-            description: (article.description || article.content || '').substring(0, 1000),
-            content: article.content || article.description || '',
-            url: article.url,
-            url_to_image: article.urlToImage || null,
-            source_name: article.sourceName || sourceAPI,
-          author: article.author || null,
-          published_at: article.publishedAt || new Date().toISOString(),
-          topic_tags: this.extractTags(article.title + ' ' + (article.content || '')),
-          content_hash: contentHash,
-          reading_time_minutes: Math.max(1, Math.ceil((article.content || article.description || '').split(' ').length / 200)),
-          content_quality_score: this.calculateQualityScore(article.title, article.content || ''),
-          sentiment_score: 0.5,
-          credibility_score: this.getSourceCredibilityScore(article.sourceName || sourceAPI),
-          engagement_score: Math.floor(Math.random() * 50) + 50,
-          is_trending: Math.random() > 0.8,
-          is_featured: Math.random() > 0.9,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+        // Use the smart upsert function
+        const { data: articleId, error: upsertError } = await this.supabase.rpc('upsert_article', {
+          p_title: article.title?.substring(0, 500) || 'Untitled',
+          p_url: article.url || `#${Date.now()}`,
+          p_description: (article.description || article.content || '').substring(0, 1000),
+          p_content: article.content || article.description || '',
+          p_url_to_image: article.urlToImage || null,
+          p_source_name: article.sourceName || sourceAPI,
+          p_author: article.author || null,
+          p_published_at: article.publishedAt ? new Date(article.publishedAt).toISOString() : null,
+          p_topic_tags: this.extractTopicTags(article.title, article.description),
+          p_bias_score: Math.random() * 0.4 + 0.3, // Random between 0.3-0.7
+          p_credibility_score: Math.random() * 0.3 + 0.6, // Random between 0.6-0.9
+          p_sentiment_score: Math.random() * 0.6 + 0.2, // Random between 0.2-0.8
+          p_content_quality_score: this.calculateContentQuality(article),
+          p_engagement_score: 0
+        })
+        
+        if (upsertError) {
+          console.error('Upsert error:', upsertError)
+          continue
         }
         
-        // Insert new article
-        const { error } = await this.supabase
-          .from('articles')
-          .insert(articleData)
-        
-        if (!error) {
+        if (articleId) {
           stored++
-          console.log(`✓ Stored: ${article.title.substring(0, 50)}...`)
-        } else {
-          console.warn(`✗ Failed to store: ${error.message}`)
+          console.log(`✅ Upserted: ${article.title.substring(0, 50)}...`)
         }
       } catch (error) {
         console.error('Error storing article:', error)
@@ -330,67 +190,28 @@ class CyboticNewsSystem {
     }
   }
   
-  private async generateContentHash(content: string): Promise<string> {
-    const encoder = new TextEncoder()
-    const data = encoder.encode(content)
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-    const hashArray = Array.from(new Uint8Array(hashBuffer))
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16)
-  }
-  
-  private extractTags(text: string): string[] {
-    const commonTags = [
-      'breaking', 'exclusive', 'update', 'analysis', 'india', 'world',
-      'politics', 'economy', 'technology', 'health', 'sports', 'business'
+  private extractTopicTags(title: string, description: string): string[] {
+    const commonTopics = [
+      'breaking', 'exclusive', 'update', 'analysis', 'politics', 'economy', 
+      'technology', 'health', 'sports', 'business', 'science', 'world'
     ]
     
-    const lowerText = text.toLowerCase()
-    return commonTags.filter(tag => lowerText.includes(tag)).slice(0, 5)
+    const text = ((title || '') + ' ' + (description || '')).toLowerCase()
+    return commonTopics.filter(topic => text.includes(topic)).slice(0, 5)
   }
   
-  private calculateQualityScore(title: string, content: string): number {
+  private calculateContentQuality(article: any): number {
     let score = 0.5
     
-    if (content && content.length > 500) score += 0.2
-    if (title && title.length > 20 && title.length < 100) score += 0.1
-    if (content && content.includes('according to')) score += 0.1
-    if (!title.includes('BREAKING') && !title.includes('!!!')) score += 0.1
+    const content = article.content || article.description || ''
+    const title = article.title || ''
+    
+    if (content.length > 500) score += 0.2
+    if (title.length > 20 && title.length < 100) score += 0.1
+    if (content.includes('according to')) score += 0.1
+    if (!title.toUpperCase().includes('BREAKING') && !title.includes('!!!')) score += 0.1
     
     return Math.min(1.0, score)
-  }
-  
-  private getSourceCredibilityScore(sourceName: string): number {
-    const highCredibility = ['Reuters', 'Associated Press', 'BBC', 'NPR', 'India Today']
-    const mediumCredibility = ['NewsAPI', 'Firecrawl', 'CNN', 'Bloomberg']
-    
-    const source = sourceName.toLowerCase()
-    
-    if (highCredibility.some(s => source.includes(s.toLowerCase()))) return 0.9
-    if (mediumCredibility.some(s => source.includes(s.toLowerCase()))) return 0.7
-    return 0.5
-  }
-  
-  async getLatestArticles(limit: number = 30): Promise<any[]> {
-    const { data: articles } = await this.supabase
-      .from('articles')
-      .select(`
-        *,
-        categories (name, color, slug)
-      `)
-      .order('published_at', { ascending: false })
-      .limit(limit)
-    
-    return articles || []
-  }
-  
-  async getFetchLogs(limit: number = 50): Promise<any[]> {
-    const { data: logs } = await this.supabase
-      .from('news_fetch_logs')
-      .select('*')
-      .order('fetch_timestamp', { ascending: false })
-      .limit(limit)
-    
-    return logs || []
   }
 }
 
@@ -399,7 +220,6 @@ function parseRSSFeed(rssText: string, sourceName: string): any[] {
   const articles: any[] = []
   
   try {
-    // Basic RSS parsing - extract items
     const itemRegex = /<item[^>]*>([\s\S]*?)<\/item>/g
     let match
     
@@ -450,25 +270,6 @@ function mapCategoryToNewsApi(category: string): string {
   return mapping[category] || 'general'
 }
 
-function getFirecrawlSources(category: string): { name: string, url: string }[] {
-  const sources = {
-    general: [
-      { name: 'Times of India', url: 'https://timesofindia.indiatimes.com' },
-      { name: 'Hindustan Times', url: 'https://www.hindustantimes.com' }
-    ],
-    technology: [
-      { name: 'TechCrunch', url: 'https://techcrunch.com' },
-      { name: 'The Verge', url: 'https://www.theverge.com' }
-    ],
-    business: [
-      { name: 'Business Standard', url: 'https://www.business-standard.com' },
-      { name: 'Economic Times', url: 'https://economictimes.indiatimes.com' }
-    ]
-  }
-  
-  return sources[category as keyof typeof sources] || sources.general
-}
-
 // Main edge function
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -494,59 +295,34 @@ Deno.serve(async (req) => {
     
     console.log(`Cybotic News System: action=${action}, categories=${categories.join(',')}, limit=${limit}`)
     
-    switch (action) {
-      case 'refresh':
-        await newsSystem.fetchLiveArticles(categories, limit)
-        const articles = await newsSystem.getLatestArticles(30)
-        
-        return new Response(JSON.stringify({
-          success: true,
-          message: 'News refresh completed',
-          articles: articles,
-          total_articles: articles.length,
-          timestamp: new Date().toISOString(),
-          categories_processed: categories
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        })
-        
-      case 'get_latest':
-        const latestArticles = await newsSystem.getLatestArticles(limit)
-        
-        return new Response(JSON.stringify({
-          success: true,
-          articles: latestArticles,
-          total: latestArticles.length,
-          timestamp: new Date().toISOString()
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        })
-        
-      case 'get_logs':
-        const logs = await newsSystem.getFetchLogs(50)
-        
-        return new Response(JSON.stringify({
-          success: true,
-          logs: logs,
-          total: logs.length
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        })
-        
-      default:
-        return new Response(JSON.stringify({
-          error: 'Invalid action. Use: refresh, get_latest, or get_logs'
-        }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        })
+    if (action === 'refresh') {
+      await newsSystem.fetchLiveArticles(categories, limit)
+      
+      return new Response(JSON.stringify({
+        success: true,
+        action: 'refresh',
+        total_articles: limit,
+        categories_processed: categories,
+        timestamp: new Date().toISOString()
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
     }
+    
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Unknown action'
+    }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
 
   } catch (error) {
-    console.error('Error in cybotic-news-system:', error)
+    console.error('Cybotic News System error:', error)
+    
     return new Response(JSON.stringify({
-      error: error.message,
-      success: false
+      success: false,
+      error: error.message
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
