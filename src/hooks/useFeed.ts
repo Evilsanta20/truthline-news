@@ -208,35 +208,18 @@ export const useFeed = (
       
       const init = async () => {
         try {
+          // First, populate with fresh articles immediately
+          console.log('🚀 Populating with fresh articles...')
+          await supabase.functions.invoke('direct-news-populator')
+          
           // Import refresh service inline to avoid circular dependencies
           const { refreshService } = await import('@/utils/refreshService')
           
           // Perform comprehensive health check and recovery
           await refreshService.performHealthCheckAndRecover()
-
-          // If still stale, force a stronger fetch via Fresh Article Enhancer
-          try {
-            const { data: latest } = await supabase
-              .from('articles')
-              .select('created_at')
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .single()
-            const hoursOld = latest?.created_at
-              ? (Date.now() - new Date(latest.created_at as any).getTime()) / 36e5
-              : 24
-            if (hoursOld > 2) {
-              console.warn('⚠️ Data still stale on init, invoking Fresh Article Enhancer...')
-              await supabase.functions.invoke('fresh-article-enhancer', {
-                body: { action: 'refresh_and_enhance', limit: 150 }
-              })
-            }
-          } catch (e) {
-            console.warn('Init staleness check/enhancer fallback error:', (e as Error).message)
-          }
           
         } catch (e) {
-          console.error('Health check error:', e)
+          console.error('Initialization error:', e)
         } finally {
           await fetchArticles(false)
         }
