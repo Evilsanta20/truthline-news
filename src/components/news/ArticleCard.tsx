@@ -141,7 +141,7 @@ export const ArticleCard = ({ article, variant = 'default', onBookmarkChange }: 
 
   if (variant === 'compact') {
     return (
-      <Card className="news-card hover:shadow-news transition-all duration-200">
+      <Card className="news-card">
         <CardContent className="p-4">
           <div className="flex gap-4">
             {article.url_to_image && (
@@ -149,7 +149,7 @@ export const ArticleCard = ({ article, variant = 'default', onBookmarkChange }: 
                 <img
                   src={article.url_to_image}
                   alt={article.title}
-                  className="w-20 h-20 object-cover rounded-md"
+                  className="w-24 h-24 object-cover grayscale hover:grayscale-0 transition-all duration-300"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none'
                   }}
@@ -158,11 +158,11 @@ export const ArticleCard = ({ article, variant = 'default', onBookmarkChange }: 
             )}
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between mb-2">
-                <h3 className="text-sm font-semibold leading-snug line-clamp-2">
+                <h3 className="newspaper-headline text-base leading-tight line-clamp-3">
                   <Link 
                     to={`/article/${article.id}`}
                     onClick={incrementViewCount}
-                    className="hover:text-primary transition-colors"
+                    className="hover:underline decoration-2 underline-offset-2"
                   >
                     {article.title}
                   </Link>
@@ -175,21 +175,18 @@ export const ArticleCard = ({ article, variant = 'default', onBookmarkChange }: 
                   className="flex-shrink-0 ml-2"
                 >
                   {isBookmarked ? (
-                    <BookmarkCheck className="w-4 h-4 text-primary" />
+                    <BookmarkCheck className="w-4 h-4" />
                   ) : (
                     <Bookmark className="w-4 h-4" />
                   )}
                 </Button>
               </div>
-              <div className="flex items-center text-xs text-muted-foreground space-x-2">
+              <div className="newspaper-byline text-xs space-x-2">
                 <span>{article.source_name}</span>
                 {article.published_at && (
                   <>
                     <span>•</span>
-                    <span className="flex items-center">
-                      <Clock className="w-3 h-3 mr-1" />
-                      {formatDate(article.published_at)}
-                    </span>
+                    <span>{formatDate(article.published_at)}</span>
                   </>
                 )}
               </div>
@@ -201,60 +198,60 @@ export const ArticleCard = ({ article, variant = 'default', onBookmarkChange }: 
   }
 
   return (
-    <Card className={`news-card transition-all duration-200 ${
+    <Card className={`news-card ${
       article.is_featured ? 'news-card-featured' : ''
-    }`}>
+    } ${article.is_trending ? 'news-card-trending' : ''}`}>
       <CardContent className="p-0">
         {article.url_to_image && (
-          <div className="relative">
+          <div className="relative overflow-hidden">
             <img
               src={article.url_to_image}
               alt={article.title}
-              className="w-full h-48 object-cover"
+              className="w-full h-64 object-cover grayscale hover:grayscale-0 transition-all duration-500"
               onError={(e) => {
                 e.currentTarget.src = '/placeholder.svg'
               }}
             />
-            {article.is_featured && (
-              <Badge className="absolute top-2 left-2 bg-primary text-primary-foreground">
-                Featured
-              </Badge>
-            )}
-            {article.is_trending && (
-              <Badge className="absolute top-2 right-2 bg-destructive text-destructive-foreground">
-                Trending
-              </Badge>
-            )}
-            {article.is_editors_pick && (
-              <Badge className="absolute bottom-2 left-2 bg-accent text-accent-foreground">
-                Editor's Pick
-              </Badge>
-            )}
+            <div className="absolute top-0 right-0 flex flex-col gap-1 p-2">
+              {article.is_featured && (
+                <Badge className="bg-primary text-primary-foreground font-headline uppercase text-xs tracking-wider border-2 border-background">
+                  Featured
+                </Badge>
+              )}
+              {article.is_trending && (
+                <Badge className="bg-accent text-accent-foreground font-headline uppercase text-xs tracking-wider border-2 border-background">
+                  Trending
+                </Badge>
+              )}
+              {article.is_editors_pick && (
+                <Badge className="bg-foreground text-background font-headline uppercase text-xs tracking-wider border-2 border-background">
+                  Editor's Pick
+                </Badge>
+              )}
+            </div>
           </div>
         )}
         
         <div className="p-6">
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+          <div className="flex items-start justify-between mb-4 pb-3 border-b border-[hsl(var(--newspaper-border))]">
+            <div className="flex items-center gap-3 newspaper-byline">
               {article.categories && (
-                <Badge 
-                  className="category-badge"
-                  style={{ backgroundColor: article.categories.color + '20', color: article.categories.color }}
-                >
+                <span className="category-pill">
                   {article.categories.name}
-                </Badge>
+                </span>
               )}
-              <span>{article.source_name}</span>
+              <span className="font-semibold">{article.source_name}</span>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleBookmark}
                 disabled={isBookmarking}
+                className="hover:bg-muted"
               >
                 {isBookmarked ? (
-                  <BookmarkCheck className="w-4 h-4 text-primary" />
+                  <BookmarkCheck className="w-4 h-4" />
                 ) : (
                   <Bookmark className="w-4 h-4" />
                 )}
@@ -263,44 +260,46 @@ export const ArticleCard = ({ article, variant = 'default', onBookmarkChange }: 
                 href={article.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-primary transition-colors"
+                className="p-2 hover:bg-muted rounded transition-colors"
               >
                 <ExternalLink className="w-4 h-4" />
               </a>
             </div>
           </div>
 
-          <h2 className="news-headline mb-3 line-clamp-3">
+          <h2 className="newspaper-headline text-2xl mb-3 line-clamp-3">
             <Link 
               to={`/article/${article.id}`}
               onClick={incrementViewCount}
-              className="hover:text-primary transition-colors"
+              className="hover:underline decoration-2 underline-offset-4"
             >
               {article.title}
             </Link>
           </h2>
 
           {article.description && (
-            <p className="news-description mb-4 line-clamp-3">
+            <p className="font-body text-base leading-relaxed mb-4 line-clamp-3 text-foreground/90">
               {variant === 'featured' ? article.description : truncateText(article.description, 150)}
             </p>
           )}
 
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <div className="flex items-center space-x-4">
+          <div className="newspaper-divider"></div>
+
+          <div className="flex items-center justify-between newspaper-byline pt-3">
+            <div className="flex items-center gap-4">
               {article.author && (
-                <span>By {article.author}</span>
+                <span className="font-semibold">By {article.author}</span>
               )}
               {article.published_at && (
-                <span className="flex items-center">
-                  <Clock className="w-4 h-4 mr-1" />
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
                   {formatDate(article.published_at)}
                 </span>
               )}
             </div>
-            <div className="flex items-center">
-              <Eye className="w-4 h-4 mr-1" />
-              <span>{article.view_count} views</span>
+            <div className="flex items-center gap-1">
+              <Eye className="w-3 h-3" />
+              <span>{article.view_count}</span>
             </div>
           </div>
         </div>

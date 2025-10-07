@@ -18,6 +18,11 @@ export default {
 			}
 		},
 		extend: {
+			fontFamily: {
+				'headline': ['Playfair Display', 'serif'],
+				'body': ['Merriweather', 'serif'],
+				'baskerville': ['Libre Baskerville', 'serif'],
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',

@@ -4,66 +4,75 @@
 
 @layer base {
   :root {
-    /* Updated color scheme: Blue primary, Red accent, White/Black base */
-    --background: 0 0% 100%;
-    --foreground: 0 0% 0%;
+    /* Newspaper color scheme: Classic Black & White with subtle accents */
+    --background: 0 0% 98%;
+    --foreground: 0 0% 5%;
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 0%;
+    --card-foreground: 0 0% 5%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 0%;
+    --popover-foreground: 0 0% 5%;
 
-    --primary: 219 91% 49%; /* #1D4ED8 blue */
-    --primary-foreground: 0 0% 100%;
+    --primary: 0 0% 10%; /* Deep black for headlines */
+    --primary-foreground: 0 0% 98%;
 
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 0%;
+    --secondary: 0 0% 92%;
+    --secondary-foreground: 0 0% 10%;
 
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
+    --muted: 0 0% 94%;
+    --muted-foreground: 0 0% 40%;
 
-    --accent: 0 84% 50%; /* #DC2626 red */
-    --accent-foreground: 0 0% 100%;
+    --accent: 0 65% 35%; /* Classic newspaper red for highlights */
+    --accent-foreground: 0 0% 98%;
 
-    --destructive: 0 84% 50%; /* #DC2626 red */
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 65% 35%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 90%;
+    --border: 0 0% 85%;
     --input: 0 0% 90%;
-    --ring: 219 91% 49%; /* #1D4ED8 blue */
+    --ring: 0 0% 20%;
 
-    --radius: 0.5rem;
+    --radius: 0.25rem;
+    
+    /* Newspaper-specific colors */
+    --newspaper-border: 0 0% 75%;
+    --newspaper-divider: 0 0% 15%;
+    --newspaper-byline: 0 0% 35%;
   }
 
   .dark {
-    --background: 0 0% 0%;
-    --foreground: 0 0% 100%;
+    --background: 30 5% 10%;
+    --foreground: 40 10% 95%;
 
-    --card: 0 0% 5%;
-    --card-foreground: 0 0% 100%;
+    --card: 30 5% 12%;
+    --card-foreground: 40 10% 95%;
 
-    --popover: 0 0% 5%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 30 5% 12%;
+    --popover-foreground: 40 10% 95%;
 
-    --primary: 219 91% 49%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 40 10% 90%;
+    --primary-foreground: 30 5% 10%;
 
-    --secondary: 0 0% 10%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 30 5% 18%;
+    --secondary-foreground: 40 10% 90%;
 
-    --muted: 0 0% 10%;
-    --muted-foreground: 0 0% 65%;
+    --muted: 30 5% 18%;
+    --muted-foreground: 40 5% 60%;
 
-    --accent: 0 84% 50%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 0 65% 45%;
+    --accent-foreground: 40 10% 95%;
 
-    --destructive: 0 84% 50%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 65% 45%;
+    --destructive-foreground: 40 10% 95%;
 
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
-    --ring: 219 91% 49%;
+    --border: 30 5% 22%;
+    --input: 30 5% 22%;
+    --ring: 40 10% 80%;
+    
+    --newspaper-border: 30 5% 25%;
+    --newspaper-divider: 40 10% 85%;
+    --newspaper-byline: 40 5% 65%;
   }
 }
 
@@ -73,36 +82,60 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: 'Merriweather', serif;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Playfair Display', serif;
   }
 }
 
 @layer components {
   .btn-news {
-    @apply bg-primary hover:bg-primary/90 text-primary-foreground border-0 transition-all duration-200;
+    @apply bg-primary hover:bg-primary/90 text-primary-foreground border transition-all duration-150 font-headline uppercase tracking-wide text-sm;
   }
   
   .btn-accent {
-    @apply bg-accent hover:bg-accent/90 text-accent-foreground border-0 transition-all duration-200;
+    @apply bg-accent hover:bg-accent/90 text-accent-foreground border border-accent transition-all duration-150 font-headline uppercase tracking-wide text-sm;
   }
   
   .news-card {
-    @apply bg-card border border-border rounded-lg hover:shadow-lg transition-all duration-200 hover:-translate-y-1;
+    @apply bg-card border-2 border-[hsl(var(--newspaper-border))] rounded-none hover:shadow-[0_2px_8px_rgba(0,0,0,0.15)] transition-all duration-200;
   }
   
   .news-card-trending {
-    @apply bg-gradient-to-br from-accent/5 to-accent/10 border-accent/20 hover:border-accent/40;
+    @apply border-l-4 border-l-accent bg-card;
   }
   
   .news-card-featured {
-    @apply bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20 hover:border-primary/40;
+    @apply border-t-4 border-t-primary bg-card;
+  }
+  
+  .newspaper-headline {
+    @apply font-headline font-bold text-foreground leading-tight tracking-tight;
+  }
+  
+  .newspaper-subhead {
+    @apply font-headline font-semibold text-muted-foreground leading-snug;
+  }
+  
+  .newspaper-byline {
+    @apply font-body text-sm text-[hsl(var(--newspaper-byline))] uppercase tracking-wide;
+  }
+  
+  .newspaper-divider {
+    @apply border-t-2 border-[hsl(var(--newspaper-divider))] my-6;
+  }
+  
+  .newspaper-column {
+    @apply border-r border-[hsl(var(--newspaper-border))] pr-6 last:border-r-0 last:pr-0;
   }
   
   .category-pill {
-    @apply px-3 py-1 rounded-full text-sm font-medium transition-all duration-200 hover:scale-105;
+    @apply px-2 py-0.5 border border-[hsl(var(--newspaper-border))] rounded-none text-xs font-headline uppercase tracking-wider transition-all duration-200 hover:bg-primary hover:text-primary-foreground;
   }
   
   .sticky-header {
-    @apply sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border;
+    @apply sticky top-0 z-50 bg-background border-b-4 border-[hsl(var(--newspaper-divider))];
   }
   
   .scroll-animation {
@@ -110,10 +143,14 @@
   }
   
   .hover-lift {
-    @apply transition-transform duration-200 hover:-translate-y-1;
+    @apply transition-all duration-150 hover:translate-x-1;
   }
   
   .gradient-text {
-    @apply bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent;
+    @apply text-foreground font-headline font-black;
+  }
+  
+  .newspaper-caption {
+    @apply font-body text-xs text-muted-foreground italic border-l-2 border-[hsl(var(--newspaper-border))] pl-2;
   }
 }
