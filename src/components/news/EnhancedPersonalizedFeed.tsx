@@ -11,6 +11,7 @@ import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 import { fetchNewsWithFirecrawl } from '@/utils/seedArticles'
 import { supabase } from '@/integrations/supabase/client'
 import FeedSettingsDrawer from './FeedSettingsDrawer'
+import { NewspaperSection } from '@/components/layout/NewspaperSection'
 import { 
   TrendingUp, 
   Star, 
@@ -350,54 +351,45 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-background">
       {/* Floating "Load New" Banner */}
       {pendingCount > 0 && (
         <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-in slide-in-from-top duration-300">
-          <div className="bg-primary text-primary-foreground px-6 py-3 rounded-full shadow-lg border border-primary/20 backdrop-blur-sm">
+          <div className="bg-foreground text-background px-6 py-3 border-4 border-[hsl(var(--newspaper-divider))] shadow-lg">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-primary-foreground rounded-full animate-pulse" />
-                <span className="font-medium">{pendingCount} new articles available</span>
+                <div className="w-2 h-2 bg-background animate-pulse" />
+                <span className="font-headline font-bold uppercase tracking-wide text-sm">{pendingCount} NEW STORIES</span>
               </div>
               <Button
                 onClick={applyPendingArticles}
                 size="sm"
                 variant="secondary"
-                className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 h-8 px-3"
+                className="bg-background text-foreground hover:bg-background/90 h-8 px-3 rounded-none font-headline uppercase text-xs"
               >
                 <ArrowUp className="w-4 h-4 mr-1" />
-                Load New
+                READ NOW
               </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Header with Personalization Stats */}
-      <div className="mb-8 scroll-animation">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-              <Target className="w-8 h-8 text-primary" />
-              <span className="gradient-text">Your Personalized Feed</span>
-            </h1>
-              <p className="text-muted-foreground mt-2 flex items-center gap-2">
-                <Globe className="w-4 h-4" />
-                {recommendations.length} articles tailored for you
-                {autoRefresh && (
-                  <span>• Next refresh in {formatCountdown(nextRefresh)}</span>
-                )}
-                {isConnected && (
-                  <span className="flex items-center gap-1 text-accent">
-                    <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
-                    Live ({liveStats.activeUsers} active)
-                  </span>
-                )}
-              </p>
+      {/* Header - Newspaper Style */}
+      <NewspaperSection title="Your Edition">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="newspaper-column border-r-2 border-[hsl(var(--newspaper-border))]">
+            <h3 className="newspaper-byline mb-2">SUBSCRIPTION STATUS</h3>
+            <p className="font-body text-sm">{recommendations.length} articles curated for you</p>
+            {autoRefresh && (
+              <p className="newspaper-byline text-xs mt-1">Next update: {formatCountdown(nextRefresh)}</p>
+            )}
           </div>
-          <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2">
+          <div className="newspaper-column border-r-2 border-[hsl(var(--newspaper-border))] md:border-r-0">
+            <h3 className="newspaper-byline mb-2">LAST EDITION</h3>
+            <p className="font-body text-sm">{lastRefresh.toLocaleTimeString()}</p>
+          </div>
+          <div className="flex items-center justify-center gap-2">
             <FeedSettingsDrawer
               balancedMode={balancedMode}
               onBalancedModeChange={setBalancedMode}
@@ -412,33 +404,17 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
               blockedSources={blockedSources}
               onBlockedSourcesChange={setBlockedSources}
             />
-            <div className="text-xs text-muted-foreground">
-              Last updated: {lastRefresh.toLocaleTimeString()}
-            </div>
-            {pendingCount > 0 && !isAtTop && (
-              <Button 
-                onClick={applyPendingArticles}
-                variant="default" 
-                size="sm" 
-                className="hover-lift animate-pulse bg-primary text-primary-foreground"
-              >
-                <ArrowUp className="w-4 h-4 mr-1" />
-                {pendingCount} New Article{pendingCount > 1 ? 's' : ''}
-              </Button>
-            )}
             <RefreshButton
               onRefresh={async () => {
                 manualRefresh()
                 toast({
-                  title: "Feed refreshed",
-                  description: "Latest articles loaded successfully"
+                  title: "Edition refreshed",
+                  description: "Latest stories loaded"
                 })
               }}
               onGenerateFresh={async () => {
                 try {
                   setGeneratingArticles(true)
-                  
-                  console.log('🚀 Generating fresh news using Cybotic News System...')
                   
                   const result = await supabase.functions.invoke('cybotic-news-system', {
                     body: { 
@@ -448,29 +424,17 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
                     }
                   })
                   
-                  if (result.error) {
-                    console.error('Cybotic News System error:', result.error)
-                    throw new Error(result.error.message || 'Failed to generate fresh news')
-                  }
+                  if (result.error) throw new Error(result.error.message || 'Failed to generate fresh news')
                   
-                  const totalFetched = result.data?.total_articles || 0
-                  console.log(`✅ Cybotic News System: ${totalFetched} fresh articles processed`)
-                  
-                  // Refresh recommendations after fetching
                   manualRefresh()
                   
                   return {
                     success: true,
-                    articles_processed: totalFetched,
+                    articles_processed: result.data?.total_articles || 0,
                     categories: result.data?.categories_processed || []
                   }
                 } catch (error) {
-                  console.error('Error fetching fresh news:', error)
-                  return {
-                    success: false,
-                    articles_processed: 0,
-                    categories: []
-                  }
+                  return { success: false, articles_processed: 0, categories: [] }
                 } finally {
                   setGeneratingArticles(false)
                 }
@@ -479,17 +443,8 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
               className="flex-wrap"
             />
           </div>
-            <Button
-              onClick={() => window.location.reload()}
-              variant="ghost"
-              size="sm"
-              className="hover-lift"
-            >
-              <Globe className="w-4 h-4 mr-1" />
-              Force Reload
-            </Button>
-          </div>
         </div>
+      </NewspaperSection>
 
         {/* Category Pills */}
         <div className="flex flex-wrap gap-2 mt-6">
@@ -499,8 +454,8 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
               onClick={() => setSelectedCategory(category.slug)}
               className={`category-pill ${
                 selectedCategory === category.slug
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                  ? 'bg-foreground text-background font-bold'
+                  : 'bg-muted text-foreground hover:bg-muted/80'
               }`}
             >
               {category.name}
@@ -510,20 +465,19 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
 
         {/* Topic Preferences */}
         {topicScores.length > 0 && (
-          <Card className="mt-6 scroll-animation">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+          <Card className="mt-6 scroll-animation news-card">
+            <CardHeader className="border-b-2 border-[hsl(var(--newspaper-border))]">
+              <CardTitle className="newspaper-headline text-xl flex items-center gap-2">
                 <BarChart3 className="w-5 h-5" />
-                Your Interest Profile
+                YOUR INTERESTS
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-4">
               <div className="flex flex-wrap gap-2">
                 {topicScores.slice(0, 8).map(({ topic, score }) => (
                   <Badge 
                     key={topic} 
-                    variant="secondary" 
-                    className="capitalize cursor-pointer hover:scale-105 transition-transform"
+                    className="category-pill capitalize cursor-pointer"
                     onClick={() => toggleTopicPreference(topic, false)}
                   >
                     {topic} ({Math.round(score)})
@@ -533,10 +487,9 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
             </CardContent>
           </Card>
         )}
-      </div>
 
       {/* Search and Filters */}
-      <div className="mb-8 space-y-4 scroll-animation">
+      <div className="mb-8 space-y-4 scroll-animation mt-8">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
             <div className="relative">

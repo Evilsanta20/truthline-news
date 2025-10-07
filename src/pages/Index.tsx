@@ -8,6 +8,7 @@ import { ArticleReels } from '@/components/reels/ArticleReels'
 import { MoodPage } from '@/pages/MoodPage'
 import { useAuth } from '@/hooks/useAuth'
 import { Link } from 'react-router-dom'
+import { NewspaperMasthead } from '@/components/layout/NewspaperMasthead'
 
 export default function Index() {
   const [activeTab, setActiveTab] = useState('home')
@@ -28,28 +29,42 @@ export default function Index() {
   // Show auth prompt if not logged in
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
-        <div className="text-center max-w-2xl mx-auto">
-          <div className="mx-auto w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6">
-            <Globe className="w-10 h-10 text-primary" />
-          </div>
-          <h1 className="text-4xl font-bold text-foreground mb-4">Welcome to NewsDigest AI</h1>
-          <p className="text-xl text-muted-foreground mb-8">
-            Get personalized news recommendations powered by AI. 
-            Track your reading habits and discover content tailored just for you.
-          </p>
-          <div className="flex gap-4 justify-center">
+      <div className="min-h-screen bg-background">
+        <NewspaperMasthead />
+        <div className="max-w-4xl mx-auto px-4 py-16">
+          <div className="text-center border-4 border-[hsl(var(--newspaper-divider))] p-12">
+            <h1 className="font-headline font-black text-5xl mb-4 text-foreground">
+              SUBSCRIBE TODAY
+            </h1>
+            <div className="newspaper-divider my-6"></div>
+            <p className="font-body text-lg leading-relaxed mb-8 text-foreground/90">
+              Get unlimited access to personalized news recommendations powered by 
+              cutting-edge artificial intelligence. Track your reading habits and 
+              discover content tailored exclusively for your interests.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 text-left">
+              <div className="border-2 border-[hsl(var(--newspaper-border))] p-4">
+                <h3 className="newspaper-headline text-lg mb-2">AI-POWERED</h3>
+                <p className="newspaper-byline text-xs">Advanced algorithms curate your perfect news feed</p>
+              </div>
+              <div className="border-2 border-[hsl(var(--newspaper-border))] p-4">
+                <h3 className="newspaper-headline text-lg mb-2">ANALYTICS</h3>
+                <p className="newspaper-byline text-xs">Track reading habits with detailed insights</p>
+              </div>
+              <div className="border-2 border-[hsl(var(--newspaper-border))] p-4">
+                <h3 className="newspaper-headline text-lg mb-2">BOOKMARKS</h3>
+                <p className="newspaper-byline text-xs">Save and organize your favorite articles</p>
+              </div>
+            </div>
             <Link to="/auth">
-              <Button className="bg-primary hover:bg-primary/90" size="lg">
-                <LogIn className="w-5 h-5 mr-2" />
-                Sign In / Sign Up
+              <Button className="btn-news text-sm px-8 py-6 rounded-none">
+                <LogIn className="w-4 h-4 mr-2" />
+                START YOUR SUBSCRIPTION
               </Button>
             </Link>
-          </div>
-          <div className="mt-8 text-sm text-muted-foreground">
-            <p>✨ AI-powered recommendations</p>
-            <p>📊 Reading analytics & insights</p>
-            <p>🔖 Bookmark your favorite articles</p>
+            <p className="newspaper-byline text-xs mt-6">
+              NO CREDIT CARD REQUIRED • INSTANT ACCESS
+            </p>
           </div>
         </div>
       </div>
@@ -58,119 +73,89 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero Banner */}
-      <div className="bg-gradient-to-r from-primary/10 to-accent/10 border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Play className="w-6 h-6 text-primary" />
-              <div>
-                <h3 className="font-semibold text-foreground">Try the new Reels experience!</h3>
-                <p className="text-sm text-muted-foreground">Swipe through trending news in a TikTok-style format</p>
-              </div>
-            </div>
-            <Button variant="outline" className="hover-lift">
-              Try Reels
-            </Button>
-          </div>
-        </div>
-      </div>
+      {/* Newspaper Masthead */}
+      <NewspaperMasthead />
 
-      {/* Navigation Tabs */}
-      <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-16 z-40">
+      {/* Navigation Tabs - Newspaper Style */}
+      <div className="border-b-4 border-[hsl(var(--newspaper-divider))] bg-background sticky top-14 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <div className="flex items-center justify-between mb-3 pt-3">
-              <div className="flex items-center gap-3">
-                <img 
-                  src="/lovable-uploads/e524adb8-0ef1-4971-84c5-016ea92d2d35.png" 
-                  alt="AI News Digest Logo" 
-                  className="w-7 h-7 object-contain"
-                />
-                <h2 className="text-lg font-semibold text-foreground">AI News Digest</h2>
+            <div className="flex items-center justify-between py-3 border-b-2 border-[hsl(var(--newspaper-border))]">
+              <div className="newspaper-byline text-xs tracking-wider">
+                SECTIONS
               </div>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <User className="w-4 h-4" />
-                  <span>{user.email}</span>
+              <div className="flex items-center gap-3">
+                <div className="newspaper-byline text-xs">
+                  SUBSCRIBER: {user.email?.split('@')[0].toUpperCase()}
                 </div>
-                <Button 
-                  onClick={signOut}
-                  variant="ghost" 
-                  size="sm"
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <LogOut className="w-4 h-4 mr-1" />
-                  Sign Out
-                </Button>
                 <Button 
                   onClick={() => window.location.reload()}
                   variant="ghost" 
                   size="sm"
-                  className="text-muted-foreground hover:text-foreground"
+                  className="newspaper-byline text-xs hover:bg-muted rounded-none h-7 px-2"
                 >
-                  <RotateCcw className="w-4 h-4" />
+                  <RotateCcw className="w-3 h-3 mr-1" />
+                  REFRESH
+                </Button>
+                <Button 
+                  onClick={signOut}
+                  variant="ghost" 
+                  size="sm"
+                  className="newspaper-byline text-xs hover:bg-muted rounded-none h-7 px-2"
+                >
+                  <LogOut className="w-3 h-3 mr-1" />
+                  SIGN OUT
                 </Button>
               </div>
             </div>
-            <TabsList className="grid w-full grid-cols-8 h-12 bg-transparent border-0 rounded-none">
+            <TabsList className="grid w-full grid-cols-8 h-10 bg-transparent border-0 rounded-none">
               <TabsTrigger 
                 value="mood" 
-                className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
+                className="newspaper-byline text-xs data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:font-bold rounded-none border-r border-[hsl(var(--newspaper-border))]"
               >
-                <Sparkles className="w-4 h-4 mr-2" />
-                Mood
-                <Badge className="ml-1 bg-accent text-accent-foreground text-xs">New</Badge>
+                MOOD
               </TabsTrigger>
               <TabsTrigger 
                 value="personalized" 
-                className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
+                className="newspaper-byline text-xs data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:font-bold rounded-none border-r border-[hsl(var(--newspaper-border))]"
               >
-                <Sparkles className="w-4 h-4 mr-2" />
-                Personalized
+                PERSONALIZED
               </TabsTrigger>
               <TabsTrigger 
                 value="home" 
-                className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
+                className="newspaper-byline text-xs data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:font-bold rounded-none border-r border-[hsl(var(--newspaper-border))]"
               >
-                <Home className="w-4 h-4 mr-2" />
-                Home
+                HOME
               </TabsTrigger>
               <TabsTrigger 
                 value="trending" 
-                className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
+                className="newspaper-byline text-xs data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:font-bold rounded-none border-r border-[hsl(var(--newspaper-border))]"
               >
-                <TrendingUp className="w-4 h-4 mr-2" />
-                Trending
+                TRENDING
               </TabsTrigger>
               <TabsTrigger 
                 value="bookmarks" 
-                className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
+                className="newspaper-byline text-xs data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:font-bold rounded-none border-r border-[hsl(var(--newspaper-border))]"
               >
-                <Bookmark className="w-4 h-4 mr-2" />
-                Bookmarks
+                BOOKMARKS
               </TabsTrigger>
               <TabsTrigger 
                 value="categories" 
-                className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
+                className="newspaper-byline text-xs data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:font-bold rounded-none border-r border-[hsl(var(--newspaper-border))]"
               >
-                <List className="w-4 h-4 mr-2" />
-                Categories
+                CATEGORIES
               </TabsTrigger>
               <TabsTrigger 
                 value="feed" 
-                className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
+                className="newspaper-byline text-xs data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:font-bold rounded-none border-r border-[hsl(var(--newspaper-border))]"
               >
-                <Globe className="w-4 h-4 mr-2" />
-                Feed
+                WORLD
               </TabsTrigger>
               <TabsTrigger 
                 value="reels" 
-                className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
+                className="newspaper-byline text-xs data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:font-bold rounded-none"
               >
-                <Video className="w-4 h-4 mr-2" />
-                Reels
-                <Badge className="ml-2 bg-accent text-accent-foreground text-xs">New</Badge>
+                MULTIMEDIA
               </TabsTrigger>
             </TabsList>
 
@@ -187,34 +172,34 @@ export default function Index() {
             </TabsContent>
 
             <TabsContent value="trending" className="mt-0 p-0">
-              <div className="p-8 text-center">
-                <TrendingUp className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-foreground mb-2">Trending News</h3>
-                <p className="text-muted-foreground">Discover what's trending across all categories</p>
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center border-4 border-[hsl(var(--newspaper-divider))] m-8">
+                <h3 className="newspaper-headline text-4xl mb-4">TRENDING NEWS</h3>
+                <div className="newspaper-divider my-4"></div>
+                <p className="newspaper-byline">MOST POPULAR STORIES FROM ALL SECTIONS</p>
               </div>
             </TabsContent>
 
             <TabsContent value="bookmarks" className="mt-0 p-0">
-              <div className="p-8 text-center">
-                <Bookmark className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-foreground mb-2">Your Bookmarks</h3>
-                <p className="text-muted-foreground">Access your saved articles here</p>
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center border-4 border-[hsl(var(--newspaper-divider))] m-8">
+                <h3 className="newspaper-headline text-4xl mb-4">YOUR SAVED ARTICLES</h3>
+                <div className="newspaper-divider my-4"></div>
+                <p className="newspaper-byline">ACCESS YOUR PERSONAL ARCHIVE</p>
               </div>
             </TabsContent>
 
             <TabsContent value="categories" className="mt-0 p-0">
-              <div className="p-8 text-center">
-                <List className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-foreground mb-2">Browse Categories</h3>
-                <p className="text-muted-foreground">Explore news by category</p>
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center border-4 border-[hsl(var(--newspaper-divider))] m-8">
+                <h3 className="newspaper-headline text-4xl mb-4">BROWSE BY SECTION</h3>
+                <div className="newspaper-divider my-4"></div>
+                <p className="newspaper-byline">EXPLORE ALL DEPARTMENTS</p>
               </div>
             </TabsContent>
 
             <TabsContent value="feed" className="mt-0 p-0">
-              <div className="p-8 text-center">
-                <Globe className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-foreground mb-2">Global Feed</h3>
-                <p className="text-muted-foreground">Latest news from around the world</p>
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center border-4 border-[hsl(var(--newspaper-divider))] m-8">
+                <h3 className="newspaper-headline text-4xl mb-4">WORLD NEWS</h3>
+                <div className="newspaper-divider my-4"></div>
+                <p className="newspaper-byline">INTERNATIONAL COVERAGE FROM OUR CORRESPONDENTS</p>
               </div>
             </TabsContent>
 
