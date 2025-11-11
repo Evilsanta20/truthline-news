@@ -275,29 +275,27 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
     try {
       setGeneratingArticles(true)
       
-      console.log('🚀 Generating fresh news using Cybotic News System...')
+      console.log('🚀 Fetching live headlines via Enhanced News Aggregator...')
       
-      // Use the new Cybotic News System for comprehensive news fetching
-      const result = await supabase.functions.invoke('cybotic-news-system', {
+      const result = await supabase.functions.invoke('enhanced-news-aggregator', {
         body: { 
-          action: 'refresh',
-          categories: ['general', 'technology', 'business', 'health', 'sports', 'politics'],
-          limit: 120
+          category: 'general',
+          limit: 80,
+          forceRefresh: true
         }
       })
       
       if (result.error) {
-        console.error('Cybotic News System error:', result.error)
+        console.error('Enhanced News Aggregator error:', result.error)
         throw new Error(result.error.message)
       }
       
-      const totalFetched = result.data?.total_articles || 0
-      console.log(`✅ Cybotic News System: ${totalFetched} fresh articles processed`)
-      console.log('📊 Categories processed:', result.data?.categories_processed || [])
+      const totalFetched = result.data?.total_articles || result.data?.inserted || 0
+      console.log(`✅ Enhanced News Aggregator: ${totalFetched} fresh articles processed`)
       
       toast({
-        title: "Fresh News Generated!",
-        description: `Processed ${totalFetched} articles from ${result.data?.categories_processed?.length || 0} categories using Cybotic News System`,
+        title: 'Fresh News Generated!',
+        description: `Loaded ${totalFetched} live articles`
       })
       
       // Refresh recommendations after fetching
@@ -305,9 +303,9 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
     } catch (error) {
       console.error('Error fetching fresh news:', error)
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to fetch fresh news: ${error.message}`,
-        variant: "destructive"
+        variant: 'destructive'
       })
     } finally {
       setGeneratingArticles(false)
@@ -416,11 +414,11 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
                 try {
                   setGeneratingArticles(true)
                   
-                  const result = await supabase.functions.invoke('cybotic-news-system', {
+                  const result = await supabase.functions.invoke('enhanced-news-aggregator', {
                     body: { 
-                      action: 'refresh',
-                      categories: ['general', 'technology', 'business', 'health', 'sports', 'politics'],
-                      limit: 120
+                      category: 'general',
+                      limit: 80,
+                      forceRefresh: true
                     }
                   })
                   
@@ -430,8 +428,8 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
                   
                   return {
                     success: true,
-                    articles_processed: result.data?.total_articles || 0,
-                    categories: result.data?.categories_processed || []
+                    articles_processed: result.data?.total_articles || result.data?.inserted || 0,
+                    categories: ['general']
                   }
                 } catch (error) {
                   return { success: false, articles_processed: 0, categories: [] }

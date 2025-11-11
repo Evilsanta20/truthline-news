@@ -43,11 +43,11 @@ export const useFreshArticleSystem = (options: FreshArticleOptions = {}) => {
         console.warn('fresh-article-enhancer failed, falling back to cybotic-news-system:', error?.message)
         updateProgress('🛰️ Falling back to direct fresh fetch...')
 
-        const fallback = await supabase.functions.invoke('cybotic-news-system', {
+        const fallback = await supabase.functions.invoke('enhanced-news-aggregator', {
           body: {
-            action: 'refresh',
-            categories: ['general', 'technology', 'business'],
-            limit: 120
+            category: 'general',
+            limit: 100,
+            forceRefresh: true
           }
         })
 

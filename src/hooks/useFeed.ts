@@ -365,25 +365,23 @@ export const useFeed = (
     try {
       setLoading(true)
       
-      console.log('🚀 Generating fresh news using Cybotic News System...')
+      console.log('🚀 Fetching live headlines via Enhanced News Aggregator...')
       
-      // Use the new Cybotic News System for comprehensive news fetching
-      const result = await supabase.functions.invoke('cybotic-news-system', {
+      const result = await supabase.functions.invoke('enhanced-news-aggregator', {
         body: { 
-          action: 'refresh',
-          categories: ['general', 'technology', 'business', 'health', 'sports', 'politics'],
-          limit: 100
+          category: 'general',
+          limit: 100,
+          forceRefresh: true
         }
       })
       
       if (result.error) {
-        console.error('Cybotic News System error:', result.error)
+        console.error('Enhanced News Aggregator error:', result.error)
         throw new Error(result.error.message)
       }
       
-      const totalFetched = result.data?.total_articles || 0
-      console.log(`✅ Cybotic News System: ${totalFetched} fresh articles processed`)
-      console.log('📊 Categories processed:', result.data?.categories_processed || [])
+      const totalFetched = result.data?.total_articles || result.data?.inserted || 0
+      console.log(`✅ Enhanced News Aggregator: ${totalFetched} fresh articles processed`)
       
       // Refresh recommendations after fetching
       await refresh()

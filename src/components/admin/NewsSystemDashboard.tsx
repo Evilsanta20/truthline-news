@@ -87,11 +87,11 @@ export const NewsSystemDashboard: React.FC = () => {
       setRefreshing(true)
       toast.info('Starting news refresh...')
       
-      const result = await supabase.functions.invoke('cybotic-news-system', {
+      const result = await supabase.functions.invoke('enhanced-news-aggregator', {
         body: {
-          action: 'refresh',
-          categories: ['general', 'technology', 'business', 'health', 'sports', 'politics'],
-          limit: 120
+          category: 'general',
+          limit: 80,
+          forceRefresh: true
         }
       })
       
