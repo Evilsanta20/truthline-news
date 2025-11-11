@@ -518,305 +518,149 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
         </div>
       </div>
 
-      {/* Trending Banner */}
-      {trendingArticles.length > 0 && (
-        <div className="mb-8 scroll-animation">
-          <div className="flex items-center gap-2 mb-4">
-            <Flame className="w-5 h-5 text-accent" />
-            <h2 className="text-xl font-bold text-foreground">Trending Now</h2>
-            <Zap className="w-4 h-4 text-accent" />
+
+      {/* Newspaper-Style Content Layout */}
+      <NewspaperSection title="Today's Headlines">
+        {filteredRecommendations.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="newspaper-byline">No articles available. Please click the refresh button to load fresh news.</p>
           </div>
-          <div className="overflow-x-auto">
-            <div className="flex gap-4 pb-4" style={{ minWidth: 'max-content' }}>
-              {trendingArticles.slice(0, 5).map((article, index) => (
-                <Card 
-                  key={article.id} 
-                  className="news-card news-card-trending min-w-[300px] cursor-pointer"
-                  onClick={() => handleArticleClick(article)}
-                >
-                  <CardContent className="p-4">
-                    <Badge className="bg-accent text-accent-foreground mb-2">
-                      <TrendingUp className="w-3 h-3 mr-1" />
-                      #{index + 1} Trending
-                    </Badge>
-                    <h3 className="font-semibold text-foreground mb-2 line-clamp-2">
-                      {article.title}
-                    </h3>
-                    <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span className="flex items-center gap-1">
-                        <Eye className="w-3 h-3" />
-                        <span className={liveEngagementScores[article.id] ? 'text-accent animate-pulse' : ''}>
-                          {Math.round(article.engagement_score || 0)}
-                        </span>
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {formatTimeAgo(article.created_at)}
-                      </span>
+        ) : (
+          <>
+            {/* Lead Story */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8 pb-8 border-b-4 border-[hsl(var(--newspaper-divider))]">
+              {/* Main Story - Takes up 2 columns */}
+              <div className="lg:col-span-2 border-r-2 border-[hsl(var(--newspaper-border))] pr-8">
+                <Card key={filteredRecommendations[0].id} className="news-card border-0 shadow-none">
+                  {filteredRecommendations[0].url_to_image && (
+                    <img
+                      src={filteredRecommendations[0].url_to_image}
+                      alt={filteredRecommendations[0].title}
+                      className="w-full h-96 object-cover grayscale hover:grayscale-0 transition-all duration-500 mb-4"
+                      onError={(e) => e.currentTarget.style.display = 'none'}
+                    />
+                  )}
+                  <h2 className="newspaper-headline text-5xl mb-4 leading-tight cursor-pointer hover:underline" onClick={() => handleArticleClick(filteredRecommendations[0])}>
+                    {filteredRecommendations[0].title}
+                  </h2>
+                  <p className="font-body text-lg leading-relaxed mb-4">
+                    {filteredRecommendations[0].description}
+                  </p>
+                  <div className="newspaper-divider my-4"></div>
+                  <div className="flex items-center justify-between newspaper-byline">
+                    <div className="flex items-center gap-4">
+                      <span className="font-semibold">{filteredRecommendations[0].source_name || 'Unknown Source'}</span>
+                      <span>•</span>
+                      <span>{formatTimeAgo(filteredRecommendations[0].created_at)}</span>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Content Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="recommended">For You ({filteredRecommendations.length})</TabsTrigger>
-          <TabsTrigger value="trending">Trending ({trendingArticles.length})</TabsTrigger>
-          <TabsTrigger value="featured">Featured ({featuredArticles.length})</TabsTrigger>
-          <TabsTrigger value="bookmarks">Saved ({bookmarkedArticles.length})</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="recommended" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredRecommendations.map((article, index) => (
-              <Card key={article.id} className="news-card group scroll-animation" style={{ animationDelay: `${index * 0.1}s` }}>
-                <CardContent className="p-0">
-                  <div className="p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <Badge variant="outline" style={{ borderColor: article.categories?.color }}>
-                        {article.categories?.name}
-                      </Badge>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <TrendingUp className="w-3 h-3" />
-                        {Math.round(article.recommendation_score || 0)}
-                      </div>
-                    </div>
-                    
-                    <h3 
-                      className="font-semibold text-foreground mb-2 line-clamp-2 cursor-pointer hover:text-primary transition-colors group-hover:text-primary"
-                      onClick={() => handleArticleClick(article)}
-                      onMouseEnter={() => startReadingTimer(article.id)}
-                      onMouseLeave={() => endReadingTimer(article.id)}
-                    >
-                      {article.title}
-                    </h3>
-                    
-                    <p className="text-sm text-muted-foreground mb-3 line-clamp-3">
-                      {article.description}
-                    </p>
-
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleLike(article.id)
-                          }}
-                          className="text-muted-foreground hover:text-red-600 hover:scale-110 transition-all"
-                        >
-                          <Heart className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            toggleBookmark(article.id)
-                          }}
-                          className={`hover:scale-110 transition-all ${
-                            bookmarks.has(article.id) ? 'text-accent' : 'text-muted-foreground hover:text-accent'
-                          }`}
-                        >
-                          {bookmarks.has(article.id) ? (
-                            <BookmarkCheck className="w-4 h-4" />
-                          ) : (
-                            <Bookmark className="w-4 h-4" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleShare(article.id)
-                          }}
-                          className="text-muted-foreground hover:text-primary hover:scale-110 transition-all"
-                        >
-                          <Share2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Calendar className="w-3 h-3" />
-                        <span>{formatTimeAgo(article.created_at)}</span>
-                      </div>
+                    <div className="flex gap-2">
+                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); toggleBookmark(filteredRecommendations[0].id) }}>
+                        {bookmarks.has(filteredRecommendations[0].id) ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleShare(filteredRecommendations[0].id) }}>
+                        <Share2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          
-          {/* Load More / Infinite Scroll */}
-          <div ref={loadMoreRef} className="text-center py-8">
-            {isLoadingMore ? (
-              <div className="flex items-center justify-center gap-2">
-                <Sparkles className="w-5 h-5 text-primary animate-spin" />
-                <span className="text-muted-foreground">Loading more articles...</span>
+                </Card>
               </div>
-            ) : hasMore ? (
-              <Button 
-                onClick={loadMoreArticles}
-                variant="outline"
-                className="hover-lift"
-              >
-                Load More Articles
-                <ChevronRight className="w-4 h-4 ml-2" />
-              </Button>
-            ) : (
-              <p className="text-muted-foreground">You've reached the end of your personalized feed</p>
-            )}
-          </div>
-        </TabsContent>
 
-        <TabsContent value="trending">
+              {/* Side Stories */}
+              <div className="space-y-6">
+                {filteredRecommendations.slice(1, 4).map((article) => (
+                  <div key={article.id} className="pb-6 border-b border-[hsl(var(--newspaper-border))] last:border-0">
+                    <h3 className="newspaper-headline text-xl mb-2 cursor-pointer hover:underline" onClick={() => handleArticleClick(article)}>
+                      {article.title}
+                    </h3>
+                    <p className="font-body text-sm leading-relaxed line-clamp-3 mb-2">
+                      {article.description}
+                    </p>
+                    <div className="newspaper-byline text-xs flex items-center justify-between">
+                      <span>{article.source_name || 'Unknown'} • {formatTimeAgo(article.created_at)}</span>
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => { e.stopPropagation(); toggleBookmark(article.id) }}>
+                        {bookmarks.has(article.id) ? <BookmarkCheck className="w-3 h-3" /> : <Bookmark className="w-3 h-3" />}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Three Column News Layout */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {filteredRecommendations.slice(4).map((article, index) => (
+                <div key={article.id} className="newspaper-column pb-6 border-b-2 border-[hsl(var(--newspaper-border))]">
+                  {article.url_to_image && (
+                    <img
+                      src={article.url_to_image}
+                      alt={article.title}
+                      className="w-full h-48 object-cover grayscale hover:grayscale-0 transition-all duration-300 mb-3"
+                      onError={(e) => e.currentTarget.style.display = 'none'}
+                    />
+                  )}
+                  <h3 className="newspaper-headline text-2xl mb-2 cursor-pointer hover:underline" onClick={() => handleArticleClick(article)}>
+                    {article.title}
+                  </h3>
+                  <p className="font-body text-sm leading-relaxed line-clamp-4 mb-3">
+                    {article.description}
+                  </p>
+                  <div className="newspaper-divider my-3"></div>
+                  <div className="flex items-center justify-between newspaper-byline text-xs">
+                    <span>{article.source_name || 'Unknown'} • {formatTimeAgo(article.created_at)}</span>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => { e.stopPropagation(); handleLike(article.id) }}>
+                        <Heart className="w-3 h-3" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => { e.stopPropagation(); toggleBookmark(article.id) }}>
+                        {bookmarks.has(article.id) ? <BookmarkCheck className="w-3 h-3" /> : <Bookmark className="w-3 h-3" />}
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => { e.stopPropagation(); handleShare(article.id) }}>
+                        <Share2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Load More */}
+            {filteredRecommendations.length > 12 && (
+              <div className="text-center py-8 mt-8 border-t-4 border-[hsl(var(--newspaper-divider))]">
+                <div className="newspaper-divider mb-4"></div>
+                <p className="newspaper-byline uppercase tracking-wider mb-4">End of Edition</p>
+                <Button 
+                  onClick={manualRefresh}
+                  variant="outline"
+                  className="border-2 border-foreground hover:bg-foreground hover:text-background transition-colors"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Load Fresh Edition
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+      </NewspaperSection>
+
+      {/* Additional Sections */}
+      {selectedCategory === 'all' && trendingArticles.length > 0 && (
+        <NewspaperSection title="Trending Stories">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {trendingArticles.map((article) => (
-              <Card key={article.id} className="news-card news-card-trending">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <TrendingUp className="w-4 h-4 text-accent" />
-                    <Badge variant="outline" className="border-accent text-accent">
-                      Trending
-                    </Badge>
-                  </div>
-                  <h3 
-                    className="font-semibold text-foreground mb-2 line-clamp-2 cursor-pointer hover:text-primary transition-colors"
-                    onClick={() => handleArticleClick(article)}
-                  >
-                    {article.title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                    {article.description}
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => toggleBookmark(article.id)}
-                      className={bookmarks.has(article.id) ? 'text-accent' : 'text-muted-foreground'}
-                    >
-                      {bookmarks.has(article.id) ? (
-                        <BookmarkCheck className="w-4 h-4" />
-                      ) : (
-                        <Bookmark className="w-4 h-4" />
-                      )}
-                    </Button>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Eye className="w-3 h-3" />
-                      <span>{article.engagement_score || 0}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <div key={article.id} className="newspaper-column pb-4 border-b border-[hsl(var(--newspaper-border))]">
+                <Badge className="bg-accent text-accent-foreground font-headline uppercase text-xs mb-2">Trending</Badge>
+                <h3 className="newspaper-headline text-xl mb-2 cursor-pointer hover:underline" onClick={() => handleArticleClick(article)}>
+                  {article.title}
+                </h3>
+                <p className="font-body text-sm line-clamp-3 mb-2">{article.description}</p>
+                <div className="newspaper-byline text-xs">
+                  {article.source_name || 'Unknown'} • {formatTimeAgo(article.created_at)}
+                </div>
+              </div>
             ))}
           </div>
-        </TabsContent>
-
-        <TabsContent value="featured">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {featuredArticles.map((article) => (
-              <Card key={article.id} className="news-card news-card-featured">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Star className="w-5 h-5 text-primary" />
-                    <Badge className="bg-primary text-primary-foreground">Featured</Badge>
-                  </div>
-                  <h3 
-                    className="text-xl font-bold text-foreground mb-3 cursor-pointer hover:text-primary transition-colors"
-                    onClick={() => handleArticleClick(article)}
-                  >
-                    {article.title}
-                  </h3>
-                  <p className="text-muted-foreground mb-4 line-clamp-3">
-                    {article.description}
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <Badge variant="outline" style={{ borderColor: article.categories?.color }}>
-                      {article.categories?.name}
-                    </Badge>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleBookmark(article.id)}
-                        className={bookmarks.has(article.id) ? 'text-accent' : 'text-muted-foreground'}
-                      >
-                        {bookmarks.has(article.id) ? (
-                          <BookmarkCheck className="w-4 h-4" />
-                        ) : (
-                          <Bookmark className="w-4 h-4" />
-                        )}
-                      </Button>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Eye className="w-3 h-3" />
-                        <span>{article.engagement_score || 0}</span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="bookmarks">
-          {bookmarkedArticles.length === 0 ? (
-            <Card>
-              <CardContent className="text-center py-12">
-                <Bookmark className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-foreground mb-2">No bookmarks yet</h3>
-                <p className="text-muted-foreground">Start bookmarking articles to see them here.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {bookmarkedArticles.map((article) => (
-                <Card key={article.id} className="news-card border-accent/20 bg-accent/5">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <Badge variant="outline" className="border-accent text-accent">
-                        {article.categories?.name}
-                      </Badge>
-                      <Clock className="w-4 h-4 text-accent" />
-                    </div>
-                    <h3 
-                      className="font-semibold text-foreground mb-2 line-clamp-2 cursor-pointer hover:text-primary transition-colors"
-                      onClick={() => handleArticleClick(article)}
-                    >
-                      {article.title}
-                    </h3>
-                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                      {article.description}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleBookmark(article.id)}
-                        className="text-accent hover:text-accent/80"
-                      >
-                        <BookmarkCheck className="w-4 h-4" />
-                      </Button>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <TrendingUp className="w-3 h-3" />
-                        {Math.round(article.recommendation_score || 0)}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+        </NewspaperSection>
+      )}
     </div>
   )
 }
