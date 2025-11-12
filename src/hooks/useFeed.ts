@@ -94,6 +94,14 @@ export const useFeed = (
         // Removed strict freshness filter to show existing articles
         const filteredArticles = recommendations.filter(article => {
 
+          // Freshness filter: keep only articles from last 72 hours
+          const hoursOld = article.published_at
+            ? (Date.now() - new Date(article.published_at as any).getTime()) / 36e5
+            : Infinity
+          if (hoursOld > 72) {
+            return false
+          }
+
           // Apply muted topics filter
           if (useSettings.mutedTopics?.length) {
             const hasBlockedTopic = article.topic_tags?.some(tag => 
@@ -129,13 +137,16 @@ export const useFeed = (
             const newArticles = filteredArticles.filter(a => !existingIds.has(a.id))
             return [...prev, ...newArticles]
           })
-        } else {
+          setHasMore(filteredArticles.length >= initialLimit)
+          setLastFetch(new Date())
+          return
+        } else if (filteredArticles.length > 0) {
           setArticles(filteredArticles)
+          setHasMore(filteredArticles.length >= initialLimit)
+          setLastFetch(new Date())
+          return
         }
-        
-        setHasMore(filteredArticles.length >= initialLimit)
-        setLastFetch(new Date())
-        return
+        // If no fresh recommended articles, fall back to DB query
       }
 
       // Fallback to direct database query if no recommendations
@@ -147,8 +158,8 @@ export const useFeed = (
           *,
           categories (name, color, slug)
         `)
-        .order('last_verified_at', { ascending: false })
         .order('published_at', { ascending: false })
+        .order('last_verified_at', { ascending: false })
 
       // Apply quality filters
       query = query
@@ -208,9 +219,11 @@ export const useFeed = (
       
       const init = async () => {
         try {
-          // First, populate with fresh articles immediately using the reliable fetcher
-          console.log('🚀 Using reliable news fetcher for fresh content...')
-          await supabase.functions.invoke('reliable-news-fetcher')
+          // First, fetch fresh headlines via Enhanced News Aggregator (real sources)
+          console.log('🛰️ Fetching fresh headlines via enhanced-news-aggregator...')
+          await supabase.functions.invoke('enhanced-news-aggregator', {
+            body: { category: 'general', limit: 100, forceRefresh: true }
+          })
           
           // Short delay to allow DB update
           await new Promise(resolve => setTimeout(resolve, 1000))

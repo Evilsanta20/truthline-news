@@ -131,42 +131,53 @@ class RefreshService {
     try {
       this.options.onProgress?.('Restarting auto-refresh system...')
       
-      // Use the new reliable news fetcher first
-      const { data: reliableData, error: reliableError } = await supabase.functions.invoke('reliable-news-fetcher')
+      // Prefer enhanced-news-aggregator for real, fresh sources
+      const { data: enhancedAggData, error: enhancedAggError } = await supabase.functions.invoke('enhanced-news-aggregator', {
+        body: { category: 'general', limit: 150, forceRefresh: true }
+      })
 
-      if (reliableError) {
-        console.warn('Reliable fetcher failed, trying enhanced sync:', reliableError)
+      if (enhancedAggError) {
+        console.warn('Enhanced aggregator failed, trying reliable-news-fetcher:', enhancedAggError)
         
-        // Fallback to enhanced data sync
-        const { data: enhancedData, error: enhancedError } = await supabase.functions.invoke('enhanced-data-sync', {
-          body: { 
-            action: 'sync',
-            force_fresh: true,
-            cleanup_old: true
-          }
-        })
-
-        if (enhancedError) {
-          console.warn('Enhanced sync failed, trying auto-refresh:', enhancedError)
+        const { data: reliableData, error: reliableError } = await supabase.functions.invoke('reliable-news-fetcher')
+        
+        if (reliableError) {
+          console.warn('Reliable fetcher failed, trying enhanced-data-sync:', reliableError)
           
-          // Last resort: auto-refresh
-          const { data, error } = await supabase.functions.invoke('auto-news-refresh', {
-            body: { force_restart: true }
+          // Fallback to enhanced data sync
+          const { data: enhancedData, error: enhancedError } = await supabase.functions.invoke('enhanced-data-sync', {
+            body: { 
+              action: 'sync',
+              force_fresh: true,
+              cleanup_old: true
+            }
           })
 
-          if (error) {
-            throw new Error(`All refresh methods failed: ${error.message}`)
+          if (enhancedError) {
+            console.warn('Enhanced sync failed, trying auto-refresh:', enhancedError)
+            
+            // Last resort: auto-refresh
+            const { data, error } = await supabase.functions.invoke('auto-news-refresh', {
+              body: { force_restart: true }
+            })
+
+            if (error) {
+              throw new Error(`All refresh methods failed: ${error.message}`)
+            }
+            
+            this.options.onProgress?.('Auto-refresh system restarted successfully')
+            console.log('✅ Auto-refresh system restarted:', data)
+          } else {
+            this.options.onProgress?.('Enhanced data sync completed successfully')
+            console.log('✅ Enhanced data sync completed:', enhancedData)
           }
-          
-          this.options.onProgress?.('Auto-refresh system restarted successfully')
-          console.log('✅ Auto-refresh system restarted:', data)
         } else {
-          this.options.onProgress?.('Enhanced data sync completed successfully')
-          console.log('✅ Enhanced data sync completed:', enhancedData)
+          this.options.onProgress?.('Reliable news fetcher completed successfully')
+          console.log('✅ Reliable news fetcher completed:', reliableData)
         }
       } else {
-        this.options.onProgress?.('Reliable news fetcher completed successfully')
-        console.log('✅ Reliable news fetcher completed:', reliableData)
+        this.options.onProgress?.('Enhanced aggregator completed successfully')
+        console.log('✅ Enhanced aggregator completed:', enhancedAggData)
       }
     } catch (error) {
       console.error('Failed to restart auto-refresh:', error)
@@ -201,8 +212,10 @@ class RefreshService {
         24
       
       if (hoursOld > 2) {
-        this.options.onProgress?.('Data is stale, refreshing with reliable fetcher...')
-        await supabase.functions.invoke('reliable-news-fetcher')
+        this.options.onProgress?.('Data is stale, fetching via enhanced-news-aggregator...')
+        await supabase.functions.invoke('enhanced-news-aggregator', {
+          body: { category: 'general', limit: 150, forceRefresh: true }
+        })
       }
       
       this.options.onProgress?.('System health check completed')
