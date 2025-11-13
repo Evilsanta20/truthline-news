@@ -150,14 +150,15 @@ export const useFeed = (
       }
 
       // Fallback to direct database query if no recommendations
-      console.log('📝 Fetching articles from database directly')
-      // Removed freshness cutoff to show all available articles
+      console.log('📝 Fetching articles from database directly (last 48h)')
+      const cutoffISO = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
       let query = supabase
         .from('articles')
         .select(`
           *,
           categories (name, color, slug)
         `)
+        .gte('published_at', cutoffISO)
         .order('published_at', { ascending: false })
         .order('last_verified_at', { ascending: false })
 
