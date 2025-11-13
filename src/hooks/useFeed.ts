@@ -286,7 +286,7 @@ export const useFeed = (
       // Perform health check and auto-recovery
       await refreshService.performHealthCheckAndRecover()
 
-      // If still stale, force a stronger fetch via Fresh Article Enhancer
+      // If still stale, force a stronger fetch via Purge & Fetch Latest
       try {
         const { data: latest } = await supabase
           .from('articles')
@@ -298,9 +298,9 @@ export const useFeed = (
           ? (Date.now() - new Date(latest.created_at as any).getTime()) / 36e5
           : 24
         if (hoursOld > 2) {
-          console.warn('⚠️ Data still stale after recovery, invoking Fresh Article Enhancer...')
-          await supabase.functions.invoke('fresh-article-enhancer', {
-            body: { action: 'refresh_and_enhance', limit: 150 }
+          console.warn('⚠️ Data still stale after recovery, invoking Purge & Fetch Latest...')
+          await supabase.functions.invoke('purge-and-fetch-latest', {
+            body: { max_age_hours: 48, wipe_all: false }
           })
         }
       } catch (e) {

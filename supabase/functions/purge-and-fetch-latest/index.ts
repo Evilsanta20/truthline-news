@@ -27,13 +27,13 @@ serve(async (req) => {
     const { max_age_hours = 48, wipe_all = false } = await req.json().catch(() => ({ }));
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error("Supabase environment not configured");
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { global: { headers: { "x-client-info": "purge-and-fetch-latest" } } });
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { global: { headers: { "x-client-info": "purge-and-fetch-latest" } } });
 
     // 1) Purge old (or all) articles
     let removed = 0;
@@ -49,7 +49,7 @@ serve(async (req) => {
       const { error: delErr, count } = await supabase
         .from("articles")
         .delete({ count: "exact" })
-        .lt("published_at", cutoffISO);
+        .or(`published_at.is.null,published_at.lt.${cutoffISO}`);
       if (delErr) throw delErr;
       removed = count ?? 0;
     }
