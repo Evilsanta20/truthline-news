@@ -378,32 +378,31 @@ export const useFeed = (
   const generateFresh = useCallback(async () => {
     try {
       setLoading(true)
-      
-      console.log('🚀 Fetching live headlines via Enhanced News Aggregator...')
-      
-      const result = await supabase.functions.invoke('enhanced-news-aggregator', {
-        body: { 
-          category: 'general',
-          limit: 100,
-          forceRefresh: true
+      console.log('🧹 Purging old news and fetching fresh via purge-and-fetch-latest...')
+
+      const result = await supabase.functions.invoke('purge-and-fetch-latest', {
+        body: {
+          max_age_hours: 48,
+          wipe_all: false
         }
       })
-      
+
       if (result.error) {
-        console.error('Enhanced News Aggregator error:', result.error)
+        console.error('purge-and-fetch-latest error:', result.error)
         throw new Error(result.error.message)
       }
-      
-      const totalFetched = result.data?.total_articles || result.data?.inserted || 0
-      console.log(`✅ Enhanced News Aggregator: ${totalFetched} fresh articles processed`)
-      
-      // Refresh recommendations after fetching
+
+      const totalFetched = result.data?.articles_added || 0
+      const removed = result.data?.removed || 0
+      console.log(`✅ Hard refresh complete: removed ${removed}, added ${totalFetched}`)
+
+      // Refresh recommendations and UI after fetching
       await refresh()
-      
+
       return {
         success: true,
         articles_processed: totalFetched,
-        categories: result.data?.categories_processed || [],
+        categories: [],
         timestamp: result.data?.timestamp
       }
     } catch (err: any) {
