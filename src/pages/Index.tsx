@@ -6,6 +6,7 @@ import { Play, Sparkles, Home, TrendingUp, Bookmark, Globe, List, Video, RotateC
 import { EnhancedPersonalizedFeed } from '@/components/news/EnhancedPersonalizedFeed'
 import { ArticleReels } from '@/components/reels/ArticleReels'
 import { MoodPage } from '@/pages/MoodPage'
+import { CategoryFeed } from '@/components/news/CategoryFeed'
 import { useAuth } from '@/hooks/useAuth'
 import { Link } from 'react-router-dom'
 import { NewspaperMasthead } from '@/components/layout/NewspaperMasthead'
@@ -108,19 +109,7 @@ export default function Index() {
                 </Button>
               </div>
             </div>
-            <TabsList className="grid w-full grid-cols-8 h-10 bg-transparent border-0 rounded-none">
-              <TabsTrigger 
-                value="mood" 
-                className="newspaper-byline text-xs data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:font-bold rounded-none border-r border-[hsl(var(--newspaper-border))]"
-              >
-                MOOD
-              </TabsTrigger>
-              <TabsTrigger 
-                value="personalized" 
-                className="newspaper-byline text-xs data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:font-bold rounded-none border-r border-[hsl(var(--newspaper-border))]"
-              >
-                PERSONALIZED
-              </TabsTrigger>
+            <TabsList className="grid w-full grid-cols-10 h-10 bg-transparent border-0 rounded-none">
               <TabsTrigger 
                 value="home" 
                 className="newspaper-byline text-xs data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:font-bold rounded-none border-r border-[hsl(var(--newspaper-border))]"
@@ -128,25 +117,49 @@ export default function Index() {
                 HOME
               </TabsTrigger>
               <TabsTrigger 
-                value="trending" 
+                value="politics" 
                 className="newspaper-byline text-xs data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:font-bold rounded-none border-r border-[hsl(var(--newspaper-border))]"
               >
-                TRENDING
+                POLITICS
               </TabsTrigger>
               <TabsTrigger 
-                value="bookmarks" 
+                value="technology" 
                 className="newspaper-byline text-xs data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:font-bold rounded-none border-r border-[hsl(var(--newspaper-border))]"
               >
-                BOOKMARKS
+                TECH
               </TabsTrigger>
               <TabsTrigger 
-                value="categories" 
+                value="business" 
                 className="newspaper-byline text-xs data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:font-bold rounded-none border-r border-[hsl(var(--newspaper-border))]"
               >
-                CATEGORIES
+                BUSINESS
               </TabsTrigger>
               <TabsTrigger 
-                value="feed" 
+                value="sports" 
+                className="newspaper-byline text-xs data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:font-bold rounded-none border-r border-[hsl(var(--newspaper-border))]"
+              >
+                SPORTS
+              </TabsTrigger>
+              <TabsTrigger 
+                value="entertainment" 
+                className="newspaper-byline text-xs data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:font-bold rounded-none border-r border-[hsl(var(--newspaper-border))]"
+              >
+                ENTERTAINMENT
+              </TabsTrigger>
+              <TabsTrigger 
+                value="health" 
+                className="newspaper-byline text-xs data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:font-bold rounded-none border-r border-[hsl(var(--newspaper-border))]"
+              >
+                HEALTH
+              </TabsTrigger>
+              <TabsTrigger 
+                value="science" 
+                className="newspaper-byline text-xs data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:font-bold rounded-none border-r border-[hsl(var(--newspaper-border))]"
+              >
+                SCIENCE
+              </TabsTrigger>
+              <TabsTrigger 
+                value="world" 
                 className="newspaper-byline text-xs data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:font-bold rounded-none border-r border-[hsl(var(--newspaper-border))]"
               >
                 WORLD
@@ -159,48 +172,40 @@ export default function Index() {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="mood" className="mt-0 p-0">
-              <MoodPage userId={user.id} />
-            </TabsContent>
-
-            <TabsContent value="personalized" className="mt-0 p-0">
-              <EnhancedPersonalizedFeed userId={user.id} />
-            </TabsContent>
-
             <TabsContent value="home" className="mt-0 p-0">
               <EnhancedPersonalizedFeed userId={user.id} />
             </TabsContent>
 
-            <TabsContent value="trending" className="mt-0 p-0">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center border-4 border-[hsl(var(--newspaper-divider))] m-8">
-                <h3 className="newspaper-headline text-4xl mb-4">TRENDING NEWS</h3>
-                <div className="newspaper-divider my-4"></div>
-                <p className="newspaper-byline">MOST POPULAR STORIES FROM ALL SECTIONS</p>
-              </div>
+            <TabsContent value="politics" className="mt-0 p-0">
+              <CategoryFeed userId={user.id} categorySlug="politics" categoryName="Politics" />
             </TabsContent>
 
-            <TabsContent value="bookmarks" className="mt-0 p-0">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center border-4 border-[hsl(var(--newspaper-divider))] m-8">
-                <h3 className="newspaper-headline text-4xl mb-4">YOUR SAVED ARTICLES</h3>
-                <div className="newspaper-divider my-4"></div>
-                <p className="newspaper-byline">ACCESS YOUR PERSONAL ARCHIVE</p>
-              </div>
+            <TabsContent value="technology" className="mt-0 p-0">
+              <CategoryFeed userId={user.id} categorySlug="technology" categoryName="Technology" />
             </TabsContent>
 
-            <TabsContent value="categories" className="mt-0 p-0">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center border-4 border-[hsl(var(--newspaper-divider))] m-8">
-                <h3 className="newspaper-headline text-4xl mb-4">BROWSE BY SECTION</h3>
-                <div className="newspaper-divider my-4"></div>
-                <p className="newspaper-byline">EXPLORE ALL DEPARTMENTS</p>
-              </div>
+            <TabsContent value="business" className="mt-0 p-0">
+              <CategoryFeed userId={user.id} categorySlug="business" categoryName="Business" />
             </TabsContent>
 
-            <TabsContent value="feed" className="mt-0 p-0">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center border-4 border-[hsl(var(--newspaper-divider))] m-8">
-                <h3 className="newspaper-headline text-4xl mb-4">WORLD NEWS</h3>
-                <div className="newspaper-divider my-4"></div>
-                <p className="newspaper-byline">INTERNATIONAL COVERAGE FROM OUR CORRESPONDENTS</p>
-              </div>
+            <TabsContent value="sports" className="mt-0 p-0">
+              <CategoryFeed userId={user.id} categorySlug="sports" categoryName="Sports" />
+            </TabsContent>
+
+            <TabsContent value="entertainment" className="mt-0 p-0">
+              <CategoryFeed userId={user.id} categorySlug="entertainment" categoryName="Entertainment" />
+            </TabsContent>
+
+            <TabsContent value="health" className="mt-0 p-0">
+              <CategoryFeed userId={user.id} categorySlug="health" categoryName="Health" />
+            </TabsContent>
+
+            <TabsContent value="science" className="mt-0 p-0">
+              <CategoryFeed userId={user.id} categorySlug="science" categoryName="Science" />
+            </TabsContent>
+
+            <TabsContent value="world" className="mt-0 p-0">
+              <CategoryFeed userId={user.id} categorySlug="world" categoryName="World" />
             </TabsContent>
 
             <TabsContent value="reels" className="mt-0 p-0">
