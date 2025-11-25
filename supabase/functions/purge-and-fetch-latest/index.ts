@@ -57,18 +57,24 @@ serve(async (req) => {
     // 2) Fetch fresh articles from reliable pipelines (no AI dependencies)
     const fetchStats: Record<string, number> = {};
 
-    // Prefer enhanced-news-aggregator (already used in app, fast path)
-    try {
-      const { data, error } = await supabase.functions.invoke("enhanced-news-aggregator", {
-        body: { category: "general", limit: 150, forceRefresh: true },
-      });
-      if (error) throw error;
-      const processed = (data?.total_articles ?? data?.inserted ?? 0) as number;
-      fetchStats["enhanced-news-aggregator"] = processed;
-    } catch (e) {
-      fetchStats["enhanced-news-aggregator"] = 0;
-      console.warn("enhanced-news-aggregator failed:", (e as Error).message);
+    // Fetch from all categories for proper categorization
+    const categories = ['politics', 'technology', 'business', 'health', 'sports', 'entertainment', 'science', 'general'];
+    let totalEnhanced = 0;
+    
+    for (const cat of categories) {
+      try {
+        const { data, error } = await supabase.functions.invoke("enhanced-news-aggregator", {
+          body: { category: cat, limit: 20, forceRefresh: true },
+        });
+        if (error) throw error;
+        const processed = (data?.total_processed ?? data?.total_articles ?? data?.inserted ?? 0) as number;
+        totalEnhanced += processed;
+        console.log(`✅ ${cat}: ${processed} articles`);
+      } catch (e) {
+        console.warn(`enhanced-news-aggregator failed for ${cat}:`, (e as Error).message);
+      }
     }
+    fetchStats["enhanced-news-aggregator"] = totalEnhanced;
 
     // Fallback: reliable-news-fetcher (RSS + immediate fresh)
     try {
