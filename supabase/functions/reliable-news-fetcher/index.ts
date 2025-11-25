@@ -239,7 +239,6 @@ serve(async (req) => {
               })
               
               if (!upsertError && articleId) {
-                // Update category_id
                 if (categoryData?.id) {
                   await supabaseClient
                     .from('articles')
