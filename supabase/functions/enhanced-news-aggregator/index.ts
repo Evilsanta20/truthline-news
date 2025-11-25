@@ -184,6 +184,9 @@ Deno.serve(async (req) => {
                   extractTagsWithAI(article.title, content)
                 ]);
                 
+                const finalCategory = normalizeCategory(aiCategory, category);
+                const finalTags = Array.from(new Set([finalCategory, ...aiTags]));
+                
                 allArticles.push({
                   title: article.title,
                   description: article.description || '',
@@ -192,9 +195,9 @@ Deno.serve(async (req) => {
                   urlToImage: article.urlToImage,
                   sourceName: article.source?.name || 'NewsAPI',
                   author: article.author,
-                  category: aiCategory,
+                  category: finalCategory,
                   publishedAt: article.publishedAt || new Date().toISOString(),
-                  tags: aiTags
+                  tags: finalTags
                 })
               }
             }
@@ -229,6 +232,9 @@ Deno.serve(async (req) => {
                   extractTagsWithAI(article.webTitle, content)
                 ]);
                 
+                const finalCategory = normalizeCategory(aiCategory, category);
+                const finalTags = Array.from(new Set([finalCategory, ...aiTags]));
+                
                 allArticles.push({
                   title: article.webTitle,
                   description: content.substring(0, 300) + '...',
@@ -237,9 +243,9 @@ Deno.serve(async (req) => {
                   urlToImage: article.fields?.thumbnail,
                   sourceName: 'The Guardian',
                   author: article.fields?.byline,
-                  category: aiCategory,
+                  category: finalCategory,
                   publishedAt: article.webPublicationDate || new Date().toISOString(),
-                  tags: aiTags
+                  tags: finalTags
                 })
               }
             }
@@ -299,6 +305,9 @@ Deno.serve(async (req) => {
                   extractTagsWithAI(article.title, content)
                 ]);
                 
+                const finalCategory = normalizeCategory(aiCategory, category);
+                const finalTags = Array.from(new Set([finalCategory, ...aiTags]));
+                
                 allArticles.push({
                   title: article.title,
                   description: article.description || '',
@@ -307,9 +316,9 @@ Deno.serve(async (req) => {
                   urlToImage: article.urlToImage,
                   sourceName: article.source?.name || 'Trending News',
                   author: article.author,
-                  category: aiCategory,
+                  category: finalCategory,
                   publishedAt: article.publishedAt,
-                  tags: aiTags
+                  tags: finalTags
                 })
               }
             }
@@ -490,10 +499,36 @@ function mapCategoryToNewsApi(category: string): string {
     'sports': 'sports',
     'entertainment': 'entertainment',
     'science': 'science',
-    'politics': 'general'
+    'politics': 'general', // NewsAPI has no explicit politics category
+    'world': 'general',
   };
   
   return mapping[category] || 'general';
+}
+
+// Normalize AI/category labels to our canonical category slugs
+function normalizeCategory(rawCategory: string, requestedCategory: string): string {
+  const canonical = ['politics','technology','business','sports','entertainment','health','science','general','world'];
+  const raw = (rawCategory || '').toLowerCase().trim();
+  const req = (requestedCategory || '').toLowerCase().trim();
+
+  // If request is a concrete section, prefer that
+  if (canonical.includes(req) && req !== 'trending' && req !== 'latest') {
+    return req;
+  }
+
+  // Map common synonyms from AI
+  if (raw.includes('politic')) return 'politics';
+  if (raw === 'tech' || raw.includes('technology')) return 'technology';
+  if (raw.includes('business') || raw === 'finance') return 'business';
+  if (raw.includes('sport')) return 'sports';
+  if (raw.includes('entertain')) return 'entertainment';
+  if (raw.includes('health') || raw.includes('medical')) return 'health';
+  if (raw.includes('science') || raw === 'sci') return 'science';
+  if (raw === 'world' || raw.includes('world news') || raw.includes('international')) return 'world';
+
+  // Fallback to general if nothing matches
+  return 'general';
 }
 
 function mapCategoryToGuardian(category: string): string {
