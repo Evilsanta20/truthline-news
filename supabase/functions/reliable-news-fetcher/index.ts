@@ -137,10 +137,23 @@ serve(async (req) => {
     let totalArticles = 0
     const startTime = Date.now()
 
-    // First, add immediate fresh articles
+    // First, add immediate fresh articles with proper categorization
     console.log('📰 Adding immediate fresh articles...')
     for (const article of IMMEDIATE_FRESH_ARTICLES) {
       try {
+        // Determine category based on tags
+        let categorySlug = 'general'
+        if (article.tags.some(t => ['ai', 'technology', 'tech'].includes(t))) categorySlug = 'technology'
+        else if (article.tags.some(t => ['medical', 'health', 'cure'].includes(t))) categorySlug = 'health'
+        else if (article.tags.some(t => ['science', 'physics', 'research'].includes(t))) categorySlug = 'science'
+        
+        // Get category_id
+        const { data: categoryData } = await supabaseClient
+          .from('categories')
+          .select('id')
+          .eq('slug', categorySlug)
+          .single()
+        
         const { data: articleId, error: upsertError } = await supabaseClient.rpc('upsert_article', {
           p_title: article.title,
           p_url: article.url,
@@ -158,9 +171,16 @@ serve(async (req) => {
           p_engagement_score: Math.floor(Math.random() * 50) + 20
         })
 
-        if (!upsertError) {
+        if (!upsertError && articleId) {
+          // Update category_id if we found one
+          if (categoryData?.id) {
+            await supabaseClient
+              .from('articles')
+              .update({ category_id: categoryData.id })
+              .eq('id', articleId)
+          }
           totalArticles++
-          console.log(`✅ Added: ${article.title.substring(0, 50)}...`)
+          console.log(`✅ Added to ${categorySlug}: ${article.title.substring(0, 50)}...`)
         }
       } catch (error) {
         console.warn('Failed to add article:', error)
@@ -194,7 +214,14 @@ serve(async (req) => {
           
           for (const article of articles.slice(0, 10)) {
             try {
-              const { error: upsertError } = await supabaseClient.rpc('upsert_article', {
+              // Get category_id based on source category
+              const { data: categoryData } = await supabaseClient
+                .from('categories')
+                .select('id')
+                .eq('slug', source.category)
+                .single()
+              
+              const { data: articleId, error: upsertError } = await supabaseClient.rpc('upsert_article', {
                 p_title: article.title.substring(0, 500),
                 p_url: article.url,
                 p_description: article.description.substring(0, 1000),
@@ -211,7 +238,14 @@ serve(async (req) => {
                 p_engagement_score: Math.floor(Math.random() * 30) + 10
               })
               
-              if (!upsertError) {
+              if (!upsertError && articleId) {
+                // Update category_id
+                if (categoryData?.id) {
+                  await supabaseClient
+                    .from('articles')
+                    .update({ category_id: categoryData.id })
+                    .eq('id', articleId)
+                }
                 totalArticles++
               }
             } catch (error) {

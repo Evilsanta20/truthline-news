@@ -342,6 +342,13 @@ Deno.serve(async (req) => {
           .single()
 
         if (!existingArticle || forceRefresh) {
+          // Get category_id from categories table based on AI-detected category
+          const { data: categoryData } = await supabaseClient
+            .from('categories')
+            .select('id')
+            .eq('slug', article.category)
+            .single()
+          
           const articleData = {
             title: article.title.substring(0, 500),
             description: article.description?.substring(0, 1000),
@@ -352,6 +359,7 @@ Deno.serve(async (req) => {
             author: article.author,
             published_at: article.publishedAt,
             topic_tags: article.tags,
+            category_id: categoryData?.id || null,
             content_hash: contentHash,
             reading_time_minutes: Math.max(1, Math.ceil((article.content || article.description || '').split(' ').length / 200)),
             content_quality_score: calculateQualityScore(article.title, article.content, article.description),
