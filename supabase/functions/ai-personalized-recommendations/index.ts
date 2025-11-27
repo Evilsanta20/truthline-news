@@ -211,22 +211,51 @@ serve(async (req) => {
       }
     }
 
-    // Sort by recommendation score and apply explore ratio
+    // Sort by recommendation score and apply explore ratio with cascading filters
     finalArticles.sort((a, b) => b.recommendation_score - a.recommendation_score);
     
-    const exploreCount = Math.floor(limit * exploreRatio);
-    const recommendedCount = limit - exploreCount;
+    const MIN_ARTICLES = 15; // Minimum to return
+    let recommendations: any[] = [];
     
-    // Take top scored + some random for exploration
-    const topRecommended = finalArticles.slice(0, recommendedCount);
-    const explorePool = finalArticles.slice(recommendedCount);
-    const randomExplore = explorePool
-      .sort(() => Math.random() - 0.5)
-      .slice(0, Math.min(exploreCount, explorePool.length));
+    // Try with different quality thresholds if needed
+    const qualityThresholds = [30, 20, 10, 5, 0];
+    let thresholdIndex = 0;
     
-    const recommendations = [...topRecommended, ...randomExplore]
-      .sort((a, b) => b.recommendation_score - a.recommendation_score)
-      .slice(0, limit);
+    while (recommendations.length < MIN_ARTICLES && thresholdIndex < qualityThresholds.length) {
+      const threshold = qualityThresholds[thresholdIndex];
+      const candidates = finalArticles.filter(a => a.recommendation_score >= threshold);
+      
+      if (candidates.length >= MIN_ARTICLES) {
+        // Apply explore ratio
+        const exploreCount = Math.floor(limit * exploreRatio);
+        const recommendedCount = limit - exploreCount;
+        
+        const topRecommended = candidates.slice(0, recommendedCount);
+        const explorePool = candidates.slice(recommendedCount);
+        const randomExplore = explorePool
+          .sort(() => Math.random() - 0.5)
+          .slice(0, Math.min(exploreCount, explorePool.length));
+        
+        recommendations = [...topRecommended, ...randomExplore]
+          .sort((a, b) => b.recommendation_score - a.recommendation_score)
+          .slice(0, limit);
+        break;
+      } else if (thresholdIndex === qualityThresholds.length - 1) {
+        // Last resort: just take whatever we have
+        recommendations = candidates.slice(0, limit);
+      }
+      
+      console.log(`Threshold ${threshold}: Found ${candidates.length} articles, need ${MIN_ARTICLES}`);
+      thresholdIndex++;
+    }
+    
+    // Emergency fallback: if still not enough, take from all articles
+    if (recommendations.length < MIN_ARTICLES) {
+      console.log('Emergency fallback: taking any available articles');
+      recommendations = finalArticles.slice(0, Math.max(MIN_ARTICLES, limit));
+    }
+    
+    console.log(`Final: Returning ${recommendations.length} recommendations (threshold level: ${thresholdIndex})`);
 
     // Get latest timestamp for incremental updates
     const latestTimestamp = recommendations.length > 0 
