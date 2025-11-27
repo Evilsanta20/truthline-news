@@ -3,6 +3,7 @@ import EnhancedPersonalizedFeed from '@/components/news/EnhancedPersonalizedFeed
 import ArticleReels from '@/components/news/ArticleReels'
 import MoodInput from '@/components/mood/MoodInput'
 import MoodBasedFeed from '@/components/mood/MoodBasedFeed'
+import BreakingNews from '@/components/news/BreakingNews'
 import { useMoodPersonalization } from '@/hooks/useMoodPersonalization'
 import type { MoodData } from '@/components/mood/MoodInput'
 import { Button } from '@/components/ui/button'
@@ -374,7 +375,7 @@ export default function ViewerPage() {
 
       {/* Content Based on View Mode */}
       {viewMode === 'mood' && currentMood ? (
-        <div className="max-w-6xl mx-auto p-6">
+        <div className="max-w-7xl mx-auto p-6">
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Heart className="w-6 h-6 text-primary" />
@@ -394,6 +395,12 @@ export default function ViewerPage() {
               Update Mood
             </Button>
           </div>
+          
+          {/* Breaking News Section */}
+          <div className="mb-6">
+            <BreakingNews />
+          </div>
+
           <MoodBasedFeed
             userId={userId}
             moodProfile={moodProfile}
@@ -401,7 +408,16 @@ export default function ViewerPage() {
           />
         </div>
       ) : (
-        <EnhancedPersonalizedFeed userId={userId} />
+        <div>
+          {/* Breaking News Banner at Top */}
+          <div className="bg-background border-b border-border">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+              <BreakingNews />
+            </div>
+          </div>
+          
+          <EnhancedPersonalizedFeed userId={userId} />
+        </div>
       )}
     </div>
   )
