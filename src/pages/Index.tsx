@@ -1,15 +1,13 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Play, Sparkles, Home, TrendingUp, Bookmark, Globe, List, Video, RotateCcw, LogIn, User, LogOut } from 'lucide-react'
+import { RotateCcw, LogOut } from 'lucide-react'
 import { EnhancedPersonalizedFeed } from '@/components/news/EnhancedPersonalizedFeed'
 import { ArticleReels } from '@/components/reels/ArticleReels'
-import { MoodPage } from '@/pages/MoodPage'
 import { CategoryFeed } from '@/components/news/CategoryFeed'
 import { useAuth } from '@/hooks/useAuth'
-import { Link } from 'react-router-dom'
 import { NewspaperMasthead } from '@/components/layout/NewspaperMasthead'
+import LandingPage from '@/pages/LandingPage'
 
 export default function Index() {
   const [activeTab, setActiveTab] = useState('home')
@@ -27,49 +25,9 @@ export default function Index() {
     )
   }
 
-  // Show auth prompt if not logged in
+  // Show landing page if not logged in
   if (!user) {
-    return (
-      <div className="min-h-screen bg-background">
-        <NewspaperMasthead />
-        <div className="max-w-4xl mx-auto px-4 py-16">
-          <div className="text-center border-4 border-[hsl(var(--newspaper-divider))] p-12">
-            <h1 className="font-headline font-black text-5xl mb-4 text-foreground">
-              SUBSCRIBE TODAY
-            </h1>
-            <div className="newspaper-divider my-6"></div>
-            <p className="font-body text-lg leading-relaxed mb-8 text-foreground/90">
-              Get unlimited access to personalized news recommendations powered by 
-              cutting-edge artificial intelligence. Track your reading habits and 
-              discover content tailored exclusively for your interests.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 text-left">
-              <div className="border-2 border-[hsl(var(--newspaper-border))] p-4">
-                <h3 className="newspaper-headline text-lg mb-2">AI-POWERED</h3>
-                <p className="newspaper-byline text-xs">Advanced algorithms curate your perfect news feed</p>
-              </div>
-              <div className="border-2 border-[hsl(var(--newspaper-border))] p-4">
-                <h3 className="newspaper-headline text-lg mb-2">ANALYTICS</h3>
-                <p className="newspaper-byline text-xs">Track reading habits with detailed insights</p>
-              </div>
-              <div className="border-2 border-[hsl(var(--newspaper-border))] p-4">
-                <h3 className="newspaper-headline text-lg mb-2">BOOKMARKS</h3>
-                <p className="newspaper-byline text-xs">Save and organize your favorite articles</p>
-              </div>
-            </div>
-            <Link to="/auth">
-              <Button className="btn-news text-sm px-8 py-6 rounded-none">
-                <LogIn className="w-4 h-4 mr-2" />
-                START YOUR SUBSCRIPTION
-              </Button>
-            </Link>
-            <p className="newspaper-byline text-xs mt-6">
-              NO CREDIT CARD REQUIRED • INSTANT ACCESS
-            </p>
-          </div>
-        </div>
-      </div>
-    )
+    return <LandingPage />
   }
 
   return (
