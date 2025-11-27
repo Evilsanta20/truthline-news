@@ -33,7 +33,7 @@ const DEFAULT_SETTINGS: Partial<FeedSettings> = {
   mutedTopics: [],
   mutedSources: [],
   qualityThreshold: 0.4,
-  credibilityThreshold: 0.3,
+  credibilityThreshold: 0.4, // Increased for trustworthiness
   biasThreshold: 0.8,
   autoRefresh: true,
   refreshInterval: 300,
@@ -91,16 +91,17 @@ export const useFeed = (
 
       // Use personalized recommendations first
       if (recommendations && recommendations.length > 0) {
-        // Removed strict freshness filter to show existing articles
-        const filteredArticles = recommendations.filter(article => {
-
-          // Freshness filter: keep only articles from last 72 hours
+        // Freshness filter: prioritize articles from last 48 hours, fallback to 72 hours
+        const strictFilter = (article: any, maxHours: number) => {
           const hoursOld = article.published_at
             ? (Date.now() - new Date(article.published_at as any).getTime()) / 36e5
             : Infinity
-          if (hoursOld > 72) {
-            return false
-          }
+          
+          // Reject articles older than max hours
+          if (hoursOld > maxHours) return false
+          
+          // Require minimum credibility for trustworthiness (0.4 = reasonable threshold)
+          if (article.credibility_score && article.credibility_score < 0.4) return false
 
           // Apply muted topics filter
           if (useSettings.mutedTopics?.length) {
@@ -121,7 +122,7 @@ export const useFeed = (
           if (article.content_quality_score && article.content_quality_score < (useSettings.qualityThreshold || 0.4)) {
             return false
           }
-          if (article.credibility_score && article.credibility_score < (useSettings.credibilityThreshold || 0.3)) {
+          if (article.credibility_score && article.credibility_score < (useSettings.credibilityThreshold || 0.4)) {
             return false
           }
           if (article.bias_score && article.bias_score > (useSettings.biasThreshold || 0.8)) {
@@ -129,7 +130,18 @@ export const useFeed = (
           }
 
           return true
-        })
+        }
+
+        // Try 48-hour filter first (strict freshness)
+        console.log('🔍 Filtering recommendations (48h strict, credibility >= 0.4)')
+        let filteredArticles = recommendations.filter(article => strictFilter(article, 48))
+        
+        // Fallback to 72 hours if we don't have enough articles
+        const MIN_ARTICLES = 15
+        if (filteredArticles.length < MIN_ARTICLES) {
+          console.log(`⚠️ Only ${filteredArticles.length} articles found in 48h, extending to 72h...`)
+          filteredArticles = recommendations.filter(article => strictFilter(article, 72))
+        }
 
         if (append) {
           setArticles(prev => {
@@ -150,8 +162,10 @@ export const useFeed = (
       }
 
       // Fallback to direct database query if no recommendations
-      console.log('📝 Fetching articles from database directly (last 48h)')
-      const cutoffISO = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
+      console.log('📝 Fetching articles from database directly (last 48h, credibility >= 0.4)')
+      let cutoffHours = 48
+      let cutoffISO = new Date(Date.now() - cutoffHours * 60 * 60 * 1000).toISOString()
+      
       let query = supabase
         .from('articles')
         .select(`
@@ -159,13 +173,13 @@ export const useFeed = (
           categories (name, color, slug)
         `)
         .gte('published_at', cutoffISO)
+        .gte('credibility_score', 0.4) // Minimum credibility for trustworthiness
         .order('published_at', { ascending: false })
-        .order('last_verified_at', { ascending: false })
+        .order('credibility_score', { ascending: false })
 
       // Apply quality filters
       query = query
         .gte('content_quality_score', useSettings.qualityThreshold || 0.4)
-        .gte('credibility_score', useSettings.credibilityThreshold || 0.3)
         .lte('bias_score', useSettings.biasThreshold || 0.8)
 
       // Apply topic filters
@@ -178,10 +192,35 @@ export const useFeed = (
         query = query.not('source_name', 'in', `(${useSettings.mutedSources.map(s => `"${s}"`).join(',')})`)
       }
 
-      const { data: fetchedArticles, error: fetchError } = await query
+      let { data: fetchedArticles, error: fetchError } = await query
         .range(append ? articles.length : 0, (append ? articles.length : 0) + initialLimit - 1)
 
       if (fetchError) throw fetchError
+
+      // Fallback to 72 hours if we don't have enough articles
+      const MIN_ARTICLES = 15
+      if ((!fetchedArticles || fetchedArticles.length < MIN_ARTICLES) && cutoffHours === 48) {
+        console.log(`⚠️ Only ${fetchedArticles?.length || 0} articles in 48h, extending to 72h...`)
+        cutoffHours = 72
+        cutoffISO = new Date(Date.now() - cutoffHours * 60 * 60 * 1000).toISOString()
+        
+        const fallbackQuery = supabase
+          .from('articles')
+          .select(`
+            *,
+            categories (name, color, slug)
+          `)
+          .gte('published_at', cutoffISO)
+          .gte('credibility_score', 0.4)
+          .gte('content_quality_score', useSettings.qualityThreshold || 0.4)
+          .lte('bias_score', useSettings.biasThreshold || 0.8)
+          .order('published_at', { ascending: false })
+          .order('credibility_score', { ascending: false })
+          .range(append ? articles.length : 0, (append ? articles.length : 0) + initialLimit - 1)
+        
+        const fallbackResult = await fallbackQuery
+        fetchedArticles = fallbackResult.data
+      }
 
       const processedArticles = (fetchedArticles || []).map(article => ({
         ...article,
