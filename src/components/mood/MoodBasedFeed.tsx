@@ -123,12 +123,21 @@ export default function MoodBasedFeed({ userId, moodProfile, className }: MoodBa
 
   const filterRecommendationsBySection = (section: string) => {
     switch (section) {
-      case 'brief':
-        return recommendations.filter(r => (r.estimated_read_time || 3) <= 3)
-      case 'deep-dive':
-        return recommendations.filter(r => (r.estimated_read_time || 3) >= 8)
-      case 'positive':
-        return recommendations.filter(r => (r.mood_positivity_score || 0.5) >= 0.7)
+      case 'brief': {
+        // Quick reads: prefer <= 5 minutes, but show at least 5 articles
+        const brief = recommendations.filter(r => (r.estimated_read_time || 3) <= 5)
+        return brief.length >= 5 ? brief : recommendations.slice(0, Math.min(10, recommendations.length))
+      }
+      case 'deep-dive': {
+        // Long reads: prefer >= 6 minutes, but show at least 5 articles
+        const deep = recommendations.filter(r => (r.estimated_read_time || 3) >= 6)
+        return deep.length >= 5 ? deep : recommendations.slice(0, Math.min(10, recommendations.length))
+      }
+      case 'positive': {
+        // Uplifting: prefer high positivity, but show at least 5 articles
+        const positive = recommendations.filter(r => (r.mood_positivity_score || 0.5) >= 0.6)
+        return positive.length >= 5 ? positive : recommendations.slice(0, Math.min(10, recommendations.length))
+      }
       default:
         return recommendations
     }
