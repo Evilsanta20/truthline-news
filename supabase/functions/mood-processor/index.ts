@@ -323,7 +323,7 @@ async function getMoodBasedRecommendations(userId: string, moodProfile: MoodProf
 
     console.log(`Returning ${recommendations.length} mood-based recommendations (filter level: ${filterLevel})`);
 
-    // Store mood recommendations in database
+    // Store mood recommendations in database (insert new, ignore conflicts)
     const moodRecommendations = recommendations.map(article => ({
       user_id: userId,
       article_id: article.id,
@@ -333,12 +333,15 @@ async function getMoodBasedRecommendations(userId: string, moodProfile: MoodProf
     }));
 
     if (moodRecommendations.length > 0) {
-      await supabase
+      const { error: insertError } = await supabase
         .from('mood_recommendations')
-        .upsert(moodRecommendations, {
-          onConflict: 'user_id,article_id',
-          ignoreDuplicates: false
-        });
+        .insert(moodRecommendations)
+        .select();
+      
+      if (insertError) {
+        console.log('Note: Could not store mood recommendations:', insertError.message);
+        // Not critical - recommendations still work without storage
+      }
     }
 
     return recommendations;
