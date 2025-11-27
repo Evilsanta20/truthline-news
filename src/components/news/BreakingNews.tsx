@@ -176,106 +176,112 @@ export default function BreakingNews({ className }: BreakingNewsProps) {
   }
 
   return (
-    <Card className={`border-red-200 bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-950/20 dark:to-orange-950/20 ${className}`}>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Zap className="w-5 h-5 text-red-500 animate-pulse" />
-            Breaking News
-            <Badge variant="destructive" className="ml-2">
-              Live
-            </Badge>
-          </CardTitle>
-          {newArticleCount > 0 && (
-            <Badge 
-              variant="secondary" 
-              className="cursor-pointer animate-bounce"
-              onClick={clearNewCount}
-            >
-              {newArticleCount} new
-            </Badge>
-          )}
-        </div>
-        <p className="text-xs text-muted-foreground mt-1">
-          Last 6 hours • Updated in real-time
-        </p>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {articles.map((article, index) => (
-            <div
-              key={article.id}
-              className="group relative border-b border-border/50 last:border-0 pb-4 last:pb-0"
-            >
-              <div className="flex gap-3">
-                {article.url_to_image && (
-                  <div className="flex-shrink-0 w-20 h-20 rounded overflow-hidden">
-                    <img
-                      src={article.url_to_image}
-                      alt={article.title}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                    />
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    {article.categories && (
-                      <Badge 
-                        variant="outline" 
-                        style={{ 
-                          borderColor: article.categories.color,
-                          color: article.categories.color 
-                        }}
-                        className="text-xs"
+    <div className={className}>
+      <Card className="border-red-500/30 bg-gradient-to-br from-red-50 via-orange-50/50 to-amber-50 dark:from-red-950/30 dark:via-orange-950/20 dark:to-amber-950/20 shadow-lg">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-xl">
+              <Zap className="w-6 h-6 text-red-600 animate-pulse" />
+              <span className="bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent font-bold">
+                Today's Headlines
+              </span>
+              <Badge variant="destructive" className="ml-2 animate-pulse">
+                LIVE
+              </Badge>
+            </CardTitle>
+            {newArticleCount > 0 && (
+              <Badge 
+                variant="secondary" 
+                className="cursor-pointer animate-bounce bg-green-500 text-white hover:bg-green-600"
+                onClick={clearNewCount}
+              >
+                +{newArticleCount} new
+              </Badge>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
+            <Clock className="w-3 h-3" />
+            Last 6 hours • Real-time updates • High credibility sources
+          </p>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="grid gap-3">
+            {articles.map((article, index) => (
+              <div
+                key={article.id}
+                className={`group relative rounded-lg border transition-all duration-200 hover:shadow-md p-3 ${
+                  index === 0 
+                    ? 'bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/40 dark:to-orange-950/40 border-red-300 dark:border-red-700' 
+                    : 'bg-card hover:bg-accent/50 border-border'
+                }`}
+              >
+                <div className="flex gap-3">
+                  {article.url_to_image && (
+                    <div className="flex-shrink-0 w-24 h-24 rounded-md overflow-hidden border border-border/50">
+                      <img
+                        src={article.url_to_image}
+                        alt={article.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {index === 0 && (
+                          <Badge variant="destructive" className="text-xs font-bold animate-pulse">
+                            🔥 BREAKING
+                          </Badge>
+                        )}
+                        {article.source_name && (
+                          <Badge variant="outline" className="text-xs font-medium">
+                            {article.source_name}
+                          </Badge>
+                        )}
+                        {article.credibility_score && article.credibility_score >= 0.8 && (
+                          <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
+                            ✓ Verified
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <h4 className="font-bold text-base leading-tight mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+                      <a 
+                        href={article.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="hover:underline"
                       >
-                        {article.categories.name}
-                      </Badge>
+                        {article.title}
+                      </a>
+                    </h4>
+                    {article.description && (
+                      <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                        {article.description.replace(/<[^>]*>/g, '').substring(0, 150)}...
+                      </p>
                     )}
-                    {index === 0 && (
-                      <Badge variant="destructive" className="text-xs">
-                        Latest
-                      </Badge>
-                    )}
-                  </div>
-                  <h4 className="font-semibold text-sm leading-tight mb-1 line-clamp-2 group-hover:text-primary transition-colors">
-                    <a 
-                      href={article.url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="hover:underline"
-                    >
-                      {article.title}
-                    </a>
-                  </h4>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {getTimeAgo(article.published_at)}
-                    </span>
-                    {article.source_name && (
-                      <span className="truncate">{article.source_name}</span>
-                    )}
-                    {article.credibility_score && article.credibility_score >= 0.7 && (
-                      <Badge variant="secondary" className="text-xs">
-                        <TrendingUp className="w-3 h-3 mr-1" />
-                        Verified
-                      </Badge>
-                    )}
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1 font-medium">
+                        <Clock className="w-3 h-3" />
+                        {getTimeAgo(article.published_at)}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => window.open(article.url, '_blank')}
+                      >
+                        Read More
+                        <ExternalLink className="w-3 h-3 ml-1" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => window.open(article.url, '_blank')}
-                >
-                  <ExternalLink className="w-4 h-4" />
-                </Button>
               </div>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   )
 }
