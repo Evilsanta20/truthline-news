@@ -27,10 +27,12 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 
+type ViewMode = 'feed' | 'reels' | 'mood';
+
 export default function ViewerPage() {
   const [userId, setUserId] = useState<string>('')
   const [activeSection, setActiveSection] = useState('home')
-  const [viewMode, setViewMode] = useState<'feed' | 'reels' | 'mood'>('feed')
+  const [viewMode, setViewMode] = useState<ViewMode>('feed')
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [showMoodInput, setShowMoodInput] = useState(false)
 
@@ -74,6 +76,9 @@ export default function ViewerPage() {
       toast.error(`Failed to save preset: ${result.error}`)
     }
   }
+
+  // Capture viewMode early to avoid TypeScript narrowing issues
+  const currentViewMode: ViewMode = viewMode;
 
   const navItems = [
     { id: 'home', label: 'Home', icon: Home },
@@ -201,7 +206,7 @@ export default function ViewerPage() {
               {/* View Mode Toggle - Enhanced */}
               <div className="hidden md:flex items-center bg-secondary rounded-lg p-1 border">
                 <Button
-                  variant={viewMode === 'feed' ? 'default' : 'ghost'}
+                  variant={currentViewMode === 'feed' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('feed')}
                   className="h-8 transition-all"
@@ -210,7 +215,7 @@ export default function ViewerPage() {
                   Feed
                 </Button>
                 <Button
-                  variant={viewMode === 'mood' ? 'default' : 'ghost'}
+                  variant={currentViewMode === 'mood' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => {
                     if (currentMood) {
@@ -230,7 +235,7 @@ export default function ViewerPage() {
                   )}
                 </Button>
                 <Button
-                  variant={viewMode === 'reels' ? 'default' : 'ghost'}
+                  variant={currentViewMode === 'reels' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('reels')}
                   className="h-8 transition-all relative"
@@ -312,7 +317,7 @@ export default function ViewerPage() {
                 <div className="pt-4 border-t border-border">
                   <div className="grid grid-cols-2 gap-2">
                     <Button
-                      variant={viewMode === 'feed' ? 'default' : 'outline'}
+                      variant={currentViewMode === 'feed' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => {
                         setViewMode('feed')
@@ -324,7 +329,7 @@ export default function ViewerPage() {
                       Feed
                     </Button>
                     <Button
-                      variant={viewMode === 'mood' ? 'default' : 'outline'}
+                      variant={currentViewMode === 'mood' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => {
                         if (currentMood) {
@@ -340,7 +345,7 @@ export default function ViewerPage() {
                       Mood
                     </Button>
                     <Button
-                      variant={viewMode === 'reels' ? 'default' : 'outline'}
+                      variant={currentViewMode === 'reels' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => {
                         setViewMode('reels')
