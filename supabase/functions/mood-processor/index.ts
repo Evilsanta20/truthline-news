@@ -208,6 +208,9 @@ serve(async (req) => {
 
 async function getMoodBasedRecommendations(userId: string, moodProfile: MoodProfile) {
   try {
+    const MIN_ARTICLES = 20; // Minimum articles to return
+    const IDEAL_ARTICLES = 30; // Ideal number of articles
+    
     // Get articles with mood-relevant fields
     const { data: articles, error } = await supabase
       .from('articles')
@@ -216,11 +219,17 @@ async function getMoodBasedRecommendations(userId: string, moodProfile: MoodProf
         categories (name, slug, color)
       `)
       .order('created_at', { ascending: false })
-      .limit(100);
+      .limit(200); // Fetch more for better filtering
 
-    if (error || !articles) {
+    if (error || !articles || articles.length === 0) {
       console.error('Error fetching articles:', error);
-      return [];
+      // Fallback: return any recent articles
+      const { data: fallbackArticles } = await supabase
+        .from('articles')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(MIN_ARTICLES);
+      return fallbackArticles || [];
     }
 
     // Score articles based on mood profile
@@ -282,11 +291,37 @@ async function getMoodBasedRecommendations(userId: string, moodProfile: MoodProf
       };
     });
 
-    // Sort by mood recommendation score and return top results
-    const recommendations = scoredArticles
-      .filter(article => article.mood_recommendation_score > 30)
-      .sort((a, b) => b.mood_recommendation_score - a.mood_recommendation_score)
-      .slice(0, 30);
+    // Cascading filter approach - progressively relax filters until we have enough articles
+    let recommendations: any[] = [];
+    let filterLevel = 0;
+    const filterThresholds = [50, 40, 30, 20, 10, 0]; // Progressive score thresholds
+    
+    while (recommendations.length < MIN_ARTICLES && filterLevel < filterThresholds.length) {
+      const threshold = filterThresholds[filterLevel];
+      recommendations = scoredArticles
+        .filter(article => article.mood_recommendation_score > threshold)
+        .sort((a, b) => b.mood_recommendation_score - a.mood_recommendation_score)
+        .slice(0, IDEAL_ARTICLES);
+      
+      if (recommendations.length < MIN_ARTICLES) {
+        console.log(`Filter level ${filterLevel}: Only ${recommendations.length} articles found with threshold ${threshold}, relaxing...`);
+        filterLevel++;
+      }
+    }
+    
+    // Final fallback: if still not enough, just return highest quality articles
+    if (recommendations.length < MIN_ARTICLES) {
+      console.log('All filters exhausted, returning highest quality articles');
+      recommendations = scoredArticles
+        .sort((a, b) => {
+          const qualityA = (a.content_quality_score || 0.5) + (a.engagement_score || 0) / 100;
+          const qualityB = (b.content_quality_score || 0.5) + (b.engagement_score || 0) / 100;
+          return qualityB - qualityA;
+        })
+        .slice(0, IDEAL_ARTICLES);
+    }
+
+    console.log(`Returning ${recommendations.length} mood-based recommendations (filter level: ${filterLevel})`);
 
     // Store mood recommendations in database
     const moodRecommendations = recommendations.map(article => ({
@@ -300,15 +335,22 @@ async function getMoodBasedRecommendations(userId: string, moodProfile: MoodProf
     if (moodRecommendations.length > 0) {
       await supabase
         .from('mood_recommendations')
-        .insert(moodRecommendations)
-        .onConflict('user_id, article_id')
-        .ignoreDuplicates();
+        .upsert(moodRecommendations, {
+          onConflict: 'user_id,article_id',
+          ignoreDuplicates: false
+        });
     }
 
     return recommendations;
 
   } catch (error) {
     console.error('Error generating mood recommendations:', error);
-    return [];
+    // Emergency fallback: return any recent articles
+    const { data: emergencyArticles } = await supabase
+      .from('articles')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(20);
+    return emergencyArticles || [];
   }
 }

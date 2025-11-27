@@ -243,9 +243,17 @@ export default function MoodBasedFeed({ userId, moodProfile, className }: MoodBa
               <Card>
                 <CardContent className="text-center py-8">
                   <Info className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-muted-foreground">
-                    No articles match your current mood and preferences in this section.
+                  <p className="text-muted-foreground mb-4">
+                    We're having trouble finding articles for this specific section right now.
                   </p>
+                  <Button
+                    onClick={refreshRecommendations}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Try Refreshing
+                  </Button>
                 </CardContent>
               </Card>
             ) : (
