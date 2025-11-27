@@ -8,7 +8,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
@@ -60,17 +60,17 @@ serve(async (req) => {
     if (action === 'processMood') {
       console.log(`Processing mood for user ${userId}: "${moodText}" ${emoji}`);
       
-      // Convert mood text to structured profile using OpenAI
+      // Convert mood text to structured profile using Lovable AI
       const moodInput = `${moodText || ''} ${emoji || ''} ${contextTags ? `Tags: ${contextTags.join(', ')}` : ''}`.trim();
       
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
+          'Authorization': `Bearer ${lovableApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'google/gemini-2.5-flash',
           messages: [
             { role: 'system', content: MOOD_PROMPT },
             { role: 'user', content: moodInput }
@@ -81,7 +81,9 @@ serve(async (req) => {
       });
 
       if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('Lovable AI error response:', errorText);
+        throw new Error(`AI API error: ${response.statusText}`);
       }
 
       const aiResult = await response.json();

@@ -14,9 +14,9 @@ serve(async (req) => {
   }
 
   try {
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY')
-    if (!openAIApiKey) {
-      throw new Error('OpenAI API key not configured')
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')
+    if (!lovableApiKey) {
+      throw new Error('Lovable API key not configured')
     }
 
     const supabaseClient = createClient(
@@ -99,14 +99,14 @@ Format your response as JSON:
   "engagement_factors": ["factor1", "factor2"]
 }`
 
-          const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${openAIApiKey}`,
+              'Authorization': `Bearer ${lovableApiKey}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'gpt-5-mini-2025-08-07',
+              model: 'google/gemini-2.5-flash',
               messages: [
                 { 
                   role: 'system', 
@@ -114,12 +114,14 @@ Format your response as JSON:
                 },
                 { role: 'user', content: enhancementPrompt }
               ],
-              max_completion_tokens: 1500
+              max_tokens: 1500,
+              temperature: 0.3
             }),
           })
 
           if (!response.ok) {
-            console.error(`OpenAI API error: ${response.status} ${response.statusText}`)
+            const errorText = await response.text();
+            console.error(`AI API error: ${response.status} ${response.statusText}`, errorText)
             continue
           }
 
