@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react'
 import EnhancedPersonalizedFeed from '@/components/news/EnhancedPersonalizedFeed'
 import ArticleReels from '@/components/news/ArticleReels'
+import MoodInput from '@/components/mood/MoodInput'
+import MoodBasedFeed from '@/components/mood/MoodBasedFeed'
+import { useMoodPersonalization } from '@/hooks/useMoodPersonalization'
+import type { MoodData } from '@/components/mood/MoodInput'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -17,14 +21,27 @@ import {
   X,
   Play,
   Grid3X3,
-  List
+  List,
+  Heart,
+  Sparkles
 } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function ViewerPage() {
   const [userId, setUserId] = useState<string>('')
   const [activeSection, setActiveSection] = useState('home')
-  const [viewMode, setViewMode] = useState('feed' as 'feed' | 'reels')
+  const [viewMode, setViewMode] = useState<'feed' | 'reels' | 'mood'>('feed')
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [showMoodInput, setShowMoodInput] = useState(false)
+
+  const {
+    currentMood,
+    moodPresets,
+    moodProfile,
+    loading: moodLoading,
+    processMood,
+    saveMoodPreset,
+  } = useMoodPersonalization(userId)
 
   useEffect(() => {
     // Generate or get anonymous user ID
@@ -35,6 +52,28 @@ export default function ViewerPage() {
     }
     setUserId(anonymousId)
   }, [])
+
+  const handleMoodSubmit = async (moodData: MoodData) => {
+    const result = await processMood(moodData)
+    
+    if (result.success) {
+      setShowMoodInput(false)
+      setViewMode('mood')
+      toast.success('Your mood has been processed! Here are your personalized recommendations.')
+    } else {
+      toast.error(`Failed to process mood: ${result.error}`)
+    }
+  }
+
+  const handleSavePreset = async (name: string, moodData: MoodData) => {
+    const result = await saveMoodPreset(name, moodData)
+    
+    if (result.success) {
+      toast.success(`Mood preset "${name}" saved successfully!`)
+    } else {
+      toast.error(`Failed to save preset: ${result.error}`)
+    }
+  }
 
   const navItems = [
     { id: 'home', label: 'Home', icon: Home },
@@ -55,8 +94,52 @@ export default function ViewerPage() {
   }
 
   // Render reels in full screen mode
-  if (viewMode !== 'feed') {
+  if (viewMode === 'reels') {
     return <ArticleReels userId={userId} />
+  }
+
+  // Show mood input modal
+  if (showMoodInput) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="sticky-header">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center space-x-2">
+                <Heart className="w-8 h-8 text-primary" />
+                <h1 className="text-2xl font-bold gradient-text">Mood-Based News</h1>
+              </div>
+              <Button
+                variant="ghost"
+                onClick={() => setShowMoodInput(false)}
+                className="hover-lift"
+              >
+                <X className="w-5 h-5 mr-2" />
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </header>
+        <div className="max-w-4xl mx-auto p-6 space-y-6">
+          <div className="text-center space-y-4">
+            <div className="flex items-center justify-center gap-2">
+              <Sparkles className="w-8 h-8 text-primary" />
+              <h2 className="text-3xl font-bold">How are you feeling?</h2>
+            </div>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Tell us your current mood and get personalized news recommendations that match how you're feeling right now.
+            </p>
+          </div>
+          <MoodInput
+            onMoodSubmit={handleMoodSubmit}
+            loading={moodLoading}
+            showPresets={true}
+            savedPresets={moodPresets}
+            onSavePreset={handleSavePreset}
+          />
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -127,7 +210,27 @@ export default function ViewerPage() {
                   Feed
                 </Button>
                 <Button
-                  variant={viewMode !== 'feed' ? 'default' : 'ghost'}
+                  variant={viewMode === 'mood' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => {
+                    if (currentMood) {
+                      setViewMode('mood')
+                    } else {
+                      setShowMoodInput(true)
+                    }
+                  }}
+                  className="h-8 transition-all relative"
+                >
+                  <Heart className="w-4 h-4 mr-1" />
+                  Mood
+                  {currentMood && (
+                    <Badge variant="secondary" className="ml-1 h-4 px-1 text-xs">
+                      Active
+                    </Badge>
+                  )}
+                </Button>
+                <Button
+                  variant={viewMode === 'reels' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('reels')}
                   className="h-8 transition-all relative"
@@ -207,7 +310,7 @@ export default function ViewerPage() {
                 
                 {/* Mobile View Mode Toggle */}
                 <div className="pt-4 border-t border-border">
-                  <div className="flex space-x-2 mb-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <Button
                       variant={viewMode === 'feed' ? 'default' : 'outline'}
                       size="sm"
@@ -218,19 +321,35 @@ export default function ViewerPage() {
                       className="flex-1"
                     >
                       <List className="w-4 h-4 mr-1" />
-                      Feed View
+                      Feed
                     </Button>
                     <Button
-                      variant={viewMode !== 'feed' ? 'default' : 'outline'}
+                      variant={viewMode === 'mood' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => {
+                        if (currentMood) {
+                          setViewMode('mood')
+                        } else {
+                          setShowMoodInput(true)
+                        }
+                        setIsMobileMenuOpen(false)
+                      }}
+                      className="flex-1"
+                    >
+                      <Heart className="w-4 h-4 mr-1" />
+                      Mood
+                    </Button>
+                    <Button
+                      variant={viewMode === 'reels' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => {
                         setViewMode('reels')
                         setIsMobileMenuOpen(false)
                       }}
-                      className="flex-1"
+                      className="col-span-2"
                     >
                       <Play className="w-4 h-4 mr-1" />
-                      Reels View
+                      Reels
                     </Button>
                   </div>
                 </div>
@@ -291,8 +410,37 @@ export default function ViewerPage() {
         )}
       </header>
 
-      {/* Enhanced Personalized Feed */}
-            <EnhancedPersonalizedFeed userId={userId} />
+      {/* Content Based on View Mode */}
+      {viewMode === 'mood' && currentMood ? (
+        <div className="max-w-6xl mx-auto p-6">
+          <div className="mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Heart className="w-6 h-6 text-primary" />
+              <div>
+                <h2 className="text-2xl font-bold">Your Mood-Based Feed</h2>
+                <p className="text-sm text-muted-foreground">
+                  News personalized to match your current emotional state
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={() => setShowMoodInput(true)}
+              variant="outline"
+              className="hover-lift"
+            >
+              <Heart className="w-4 h-4 mr-2" />
+              Update Mood
+            </Button>
+          </div>
+          <MoodBasedFeed
+            userId={userId}
+            moodProfile={moodProfile}
+            className="w-full"
+          />
+        </div>
+      ) : (
+        <EnhancedPersonalizedFeed userId={userId} />
+      )}
     </div>
   )
 }
