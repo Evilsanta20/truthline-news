@@ -23,7 +23,7 @@ export default function AuthPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (user && !loading) {
-      navigate('/')
+      navigate('/viewer')
     }
   }, [user, loading, navigate])
 
