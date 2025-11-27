@@ -202,51 +202,6 @@ export default function ViewerPage() {
                 <Home className="w-4 h-4 mr-1" />
                 Home
               </Button>
-              
-              {/* View Mode Toggle - Enhanced */}
-              <div className="hidden md:flex items-center bg-secondary rounded-lg p-1 border">
-                <Button
-                  variant={currentViewMode === 'feed' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('feed')}
-                  className="h-8 transition-all"
-                >
-                  <Grid3X3 className="w-4 h-4 mr-1" />
-                  Feed
-                </Button>
-                <Button
-                  variant={currentViewMode === 'mood' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => {
-                    if (currentMood) {
-                      setViewMode('mood')
-                    } else {
-                      setShowMoodInput(true)
-                    }
-                  }}
-                  className="h-8 transition-all relative"
-                >
-                  <Heart className="w-4 h-4 mr-1" />
-                  Mood
-                  {currentMood && (
-                    <Badge variant="secondary" className="ml-1 h-4 px-1 text-xs">
-                      Active
-                    </Badge>
-                  )}
-                </Button>
-                <Button
-                  variant={currentViewMode === 'reels' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('reels')}
-                  className="h-8 transition-all relative"
-                >
-                  <Play className="w-4 h-4 mr-1" />
-                  Reels
-                  <Badge variant="secondary" className="ml-1 h-4 px-1 text-xs">
-                    New
-                  </Badge>
-                </Button>
-              </div>
 
               <Button variant="ghost" size="icon" className="relative hover-lift">
                 <Search className="w-5 h-5" />
@@ -288,6 +243,55 @@ export default function ViewerPage() {
             </div>
           </div>
 
+          {/* View Mode Toggle - Always Visible on All Screens */}
+          <div className="border-t border-border bg-secondary/50">
+            <div className="max-w-7xl mx-auto px-4">
+              <div className="flex items-center justify-center gap-1 py-2">
+                <Button
+                  variant={currentViewMode === 'feed' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('feed')}
+                  className="h-9 flex-1 sm:flex-none transition-all"
+                >
+                  <Grid3X3 className="w-4 h-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Feed</span>
+                </Button>
+                <Button
+                  variant={currentViewMode === 'mood' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => {
+                    if (currentMood) {
+                      setViewMode('mood')
+                    } else {
+                      setShowMoodInput(true)
+                    }
+                  }}
+                  className="h-9 flex-1 sm:flex-none transition-all relative"
+                >
+                  <Heart className="w-4 h-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Mood</span>
+                  {currentMood && (
+                    <Badge variant="secondary" className="ml-1 h-4 px-1 text-xs hidden sm:inline-flex">
+                      Active
+                    </Badge>
+                  )}
+                </Button>
+                <Button
+                  variant={currentViewMode === 'reels' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('reels')}
+                  className="h-9 flex-1 sm:flex-none transition-all relative"
+                >
+                  <Play className="w-4 h-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Reels</span>
+                  <Badge variant="secondary" className="ml-1 h-4 px-1 text-xs hidden sm:inline-flex">
+                    New
+                  </Badge>
+                </Button>
+              </div>
+            </div>
+          </div>
+
           {/* Mobile Navigation */}
           {isMobileMenuOpen && (
             <div className="lg:hidden border-t border-border bg-background/95 backdrop-blur-sm">
@@ -312,53 +316,6 @@ export default function ViewerPage() {
                     </button>
                   )
                 })}
-                
-                {/* Mobile View Mode Toggle */}
-                <div className="pt-4 border-t border-border">
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      variant={currentViewMode === 'feed' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => {
-                        setViewMode('feed')
-                        setIsMobileMenuOpen(false)
-                      }}
-                      className="flex-1"
-                    >
-                      <List className="w-4 h-4 mr-1" />
-                      Feed
-                    </Button>
-                    <Button
-                      variant={currentViewMode === 'mood' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => {
-                        if (currentMood) {
-                          setViewMode('mood')
-                        } else {
-                          setShowMoodInput(true)
-                        }
-                        setIsMobileMenuOpen(false)
-                      }}
-                      className="flex-1"
-                    >
-                      <Heart className="w-4 h-4 mr-1" />
-                      Mood
-                    </Button>
-                    <Button
-                      variant={currentViewMode === 'reels' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => {
-                        setViewMode('reels')
-                        setIsMobileMenuOpen(false)
-                      }}
-                      className="col-span-2"
-                    >
-                      <Play className="w-4 h-4 mr-1" />
-                      Reels
-                    </Button>
-                  </div>
-                </div>
-                
                 <div className="pt-4 border-t border-border">
                   <div className="flex space-x-2">
                     <Button
