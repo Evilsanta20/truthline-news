@@ -251,18 +251,32 @@ export default function MoodBasedFeed({ userId, moodProfile, className }: MoodBa
             ) : filteredRecommendations.length === 0 ? (
               <Card>
                 <CardContent className="text-center py-8">
-                  <Info className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-muted-foreground mb-4">
-                    We're having trouble finding articles for this specific section right now.
+                  <Info className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+                  <h3 className="font-semibold mb-2">No Articles Available</h3>
+                  <p className="text-muted-foreground mb-4 max-w-md mx-auto">
+                    {recommendations.length === 0 
+                      ? "There are no articles in the database yet. Please add articles through the Admin Panel to see mood-based recommendations."
+                      : "We couldn't find articles matching this specific section. Try the 'For You' tab or refresh your recommendations."}
                   </p>
-                  <Button
-                    onClick={refreshRecommendations}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Try Refreshing
-                  </Button>
+                  <div className="flex gap-2 justify-center">
+                    {recommendations.length > 0 && (
+                      <Button
+                        onClick={() => setActiveSection('for-you')}
+                        variant="outline"
+                        size="sm"
+                      >
+                        View All Recommendations
+                      </Button>
+                    )}
+                    <Button
+                      onClick={refreshRecommendations}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Refresh
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ) : (
