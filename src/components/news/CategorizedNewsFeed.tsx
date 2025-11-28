@@ -130,25 +130,34 @@ export default function CategorizedNewsFeed({ userId }: CategorizedNewsFeedProps
       setRefreshing(true)
       toast.loading('Fetching latest news from all sources...')
       
-      const categories = ['general', 'technology', 'business', 'sports', 'entertainment', 'health', 'science']
+      // Use category slugs that match database categories
+      const categories = ['general', 'technology', 'business', 'sports', 'entertainment', 'health', 'science', 'politics', 'world']
       let totalArticles = 0
       
       for (const category of categories) {
-        const { data, error } = await supabase.functions.invoke('enhanced-news-aggregator', {
-          body: { 
-            category,
-            limit: 15,
-            forceRefresh: true
+        try {
+          console.log(`Fetching news for category: ${category}`)
+          const { data, error } = await supabase.functions.invoke('enhanced-news-aggregator', {
+            body: { 
+              category,
+              limit: 15,
+              forceRefresh: true
+            }
+          })
+          
+          if (error) {
+            console.error(`Error fetching ${category}:`, error)
+          } else if (data) {
+            totalArticles += data.total_processed || 0
+            console.log(`Category ${category}: ${data.total_processed || 0} articles`)
           }
-        })
-        
-        if (!error && data) {
-          totalArticles += data.total_processed || 0
+        } catch (categoryError) {
+          console.error(`Failed to fetch ${category}:`, categoryError)
         }
       }
       
       toast.dismiss()
-      toast.success(`Fetched ${totalArticles} fresh articles!`)
+      toast.success(`Fetched ${totalArticles} fresh articles across all categories!`)
       
       // Reload articles after fetching
       await loadArticles()

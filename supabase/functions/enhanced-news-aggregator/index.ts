@@ -352,11 +352,15 @@ Deno.serve(async (req) => {
 
         if (!existingArticle || forceRefresh) {
           // Get category_id from categories table based on AI-detected category
-          const { data: categoryData } = await supabaseClient
+          const { data: categoryData, error: catError } = await supabaseClient
             .from('categories')
             .select('id')
             .eq('slug', article.category)
-            .single()
+            .maybeSingle()
+          
+          if (catError) {
+            console.warn(`Error fetching category ${article.category}:`, catError)
+          }
           
           const articleData = {
             title: article.title.substring(0, 500),
