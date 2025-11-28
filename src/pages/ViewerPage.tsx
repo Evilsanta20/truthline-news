@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import EnhancedPersonalizedFeed from '@/components/news/EnhancedPersonalizedFeed'
+import CategorizedNewsFeed from '@/components/news/CategorizedNewsFeed'
 import ArticleReels from '@/components/news/ArticleReels'
 import MoodInput from '@/components/mood/MoodInput'
 import MoodBasedFeed from '@/components/mood/MoodBasedFeed'
@@ -28,7 +29,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 
-type ViewMode = 'feed' | 'reels' | 'mood';
+type ViewMode = 'feed' | 'reels' | 'mood' | 'categories';
 
 export default function ViewerPage() {
   const [userId, setUserId] = useState<string>('')
@@ -249,6 +250,15 @@ export default function ViewerPage() {
             <div className="max-w-7xl mx-auto px-4">
               <div className="flex items-center justify-center gap-1 py-2">
                 <Button
+                  variant={currentViewMode === 'categories' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('categories')}
+                  className="h-9 flex-1 sm:flex-none transition-all"
+                >
+                  <List className="w-4 h-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Categories</span>
+                </Button>
+                <Button
                   variant={currentViewMode === 'feed' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('feed')}
@@ -374,7 +384,18 @@ export default function ViewerPage() {
       </header>
 
       {/* Content Based on View Mode */}
-      {viewMode === 'mood' && currentMood ? (
+      {viewMode === 'categories' ? (
+        <div>
+          {/* Breaking News Banner at Top */}
+          <div className="bg-background border-b border-border">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+              <BreakingNews />
+            </div>
+          </div>
+          
+          <CategorizedNewsFeed userId={userId} />
+        </div>
+      ) : viewMode === 'mood' && currentMood ? (
         <div className="max-w-7xl mx-auto p-6">
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-3">
