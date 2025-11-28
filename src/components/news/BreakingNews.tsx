@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Zap, Clock, ExternalLink, TrendingUp } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
+import { stripAndTruncate } from '@/utils/textUtils'
 
 interface BreakingArticle {
   id: string
@@ -257,7 +258,7 @@ export default function BreakingNews({ className }: BreakingNewsProps) {
                     </h4>
                     {article.description && (
                       <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                        {article.description.replace(/<[^>]*>/g, '').substring(0, 150)}...
+                        {stripAndTruncate(article.description, 150)}
                       </p>
                     )}
                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
