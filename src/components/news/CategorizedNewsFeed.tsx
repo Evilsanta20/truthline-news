@@ -229,6 +229,24 @@ export default function CategorizedNewsFeed({ userId }: CategorizedNewsFeedProps
             {categoryCount} categories • {totalArticles} articles
           </p>
         </div>
+        <Button 
+          onClick={fetchFreshNews}
+          disabled={refreshing}
+          size="lg"
+          className="gap-2"
+        >
+          {refreshing ? (
+            <>
+              <RefreshCw className="w-5 h-5 animate-spin" />
+              Refreshing...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="w-5 h-5" />
+              Refresh News
+            </>
+          )}
+        </Button>
       </div>
 
       {/* Categories */}
