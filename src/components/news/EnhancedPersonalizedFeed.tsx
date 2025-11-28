@@ -621,19 +621,11 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
               ))}
             </div>
 
-            {/* Load More */}
+            {/* End of Edition */}
             {filteredRecommendations.length > 12 && (
               <div className="text-center py-8 mt-8 border-t-4 border-[hsl(var(--newspaper-divider))]">
                 <div className="newspaper-divider mb-4"></div>
-                <p className="newspaper-byline uppercase tracking-wider mb-4">End of Edition</p>
-                <Button 
-                  onClick={manualRefresh}
-                  variant="outline"
-                  className="border-2 border-foreground hover:bg-foreground hover:text-background transition-colors"
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Load Fresh Edition
-                </Button>
+                <p className="newspaper-byline uppercase tracking-wider">End of Edition</p>
               </div>
             )}
           </>
