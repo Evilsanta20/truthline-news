@@ -52,8 +52,6 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
   const [bookmarks, setBookmarks] = useState<Set<string>>(new Set())
   const [readingTimes, setReadingTimes] = useState<{[key: string]: number}>({})
   const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(true)
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
   const [balancedMode, setBalancedMode] = useState(true)
   const [exploreRatio, setExploreRatio] = useState(0.25)
@@ -81,12 +79,16 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
     articles: recommendations,
     pendingCount,
     loading,
+    loadingMore,
+    hasMore,
     nextRefresh,
     formatCountdown,
     isAtTop,
     manualRefresh,
     applyPendingArticles,
-    updateArticleLocally
+    updateArticleLocally,
+    loadMoreArticles,
+    shownArticleCount
   } = useAutoRefresh({
     userId,
     refreshInterval: autoRefresh ? refreshInterval : 0, // Disable if autoRefresh is off
@@ -151,7 +153,7 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
     const observer = new IntersectionObserver(
       (entries) => {
         const target = entries[0]
-        if (target.isIntersecting && hasMore && !isLoadingMore && !loading) {
+        if (target.isIntersecting && hasMore && !loadingMore && !loading) {
           loadMoreArticles()
         }
       },
@@ -163,25 +165,7 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
     }
 
     return () => observer.disconnect()
-  }, [hasMore, isLoadingMore, loading])
-
-  const loadMoreArticles = useCallback(async () => {
-    if (isLoadingMore) return
-    
-    setIsLoadingMore(true)
-    
-    // Simulate loading delay
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    setPage(prev => prev + 1)
-    
-    // Simulate reaching end of content after 3 pages
-    if (page >= 3) {
-      setHasMore(false)
-    }
-    
-    setIsLoadingMore(false)
-  }, [page, isLoadingMore])
+  }, [hasMore, loadingMore, loading, loadMoreArticles])
 
   // Track reading time for articles
   const startReadingTimer = (articleId: string) => {
@@ -401,7 +385,8 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div className="newspaper-column border-r-2 border-[hsl(var(--newspaper-border))]">
             <h3 className="newspaper-byline mb-2">SUBSCRIPTION STATUS</h3>
-            <p className="font-body text-sm">{recommendations.length} articles curated for you</p>
+            <p className="font-body text-sm">{recommendations.length} articles loaded</p>
+            <p className="newspaper-byline text-xs mt-1">{shownArticleCount} unique articles seen</p>
             {autoRefresh && (
               <p className="newspaper-byline text-xs mt-1">Next update: {formatCountdown(nextRefresh)}</p>
             )}
@@ -644,13 +629,29 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
               ))}
             </div>
 
-            {/* End of Edition */}
-            {filteredRecommendations.length > 12 && (
-              <div className="text-center py-8 mt-8 border-t-4 border-[hsl(var(--newspaper-divider))]">
-                <div className="newspaper-divider mb-4"></div>
-                <p className="newspaper-byline uppercase tracking-wider">End of Edition</p>
-              </div>
-            )}
+            {/* Load More / End of Edition */}
+            <div ref={loadMoreRef} className="text-center py-8 mt-8 border-t-4 border-[hsl(var(--newspaper-divider))]">
+              <div className="newspaper-divider mb-4"></div>
+              {loadingMore ? (
+                <div className="flex items-center justify-center gap-2">
+                  <RefreshCw className="w-5 h-5 animate-spin" />
+                  <p className="newspaper-byline uppercase tracking-wider">Loading More Stories...</p>
+                </div>
+              ) : hasMore ? (
+                <div>
+                  <p className="newspaper-byline uppercase tracking-wider mb-3">More Stories Available</p>
+                  <Button
+                    onClick={loadMoreArticles}
+                    variant="outline"
+                    className="font-headline uppercase text-xs"
+                  >
+                    Load More Articles
+                  </Button>
+                </div>
+              ) : (
+                <p className="newspaper-byline uppercase tracking-wider">End of Edition • All Caught Up</p>
+              )}
+            </div>
           </>
         )}
       </NewspaperSection>
