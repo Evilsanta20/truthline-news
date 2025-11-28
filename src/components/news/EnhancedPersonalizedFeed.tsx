@@ -44,18 +44,6 @@ interface EnhancedPersonalizedFeedProps {
 
 export { EnhancedPersonalizedFeed }
 
-const CATEGORIES = [
-  { slug: 'all', name: 'All Categories', color: '#3B82F6' },
-  { slug: 'politics', name: 'Politics', color: '#DC2626' },
-  { slug: 'technology', name: 'Technology', color: '#059669' },
-  { slug: 'sports', name: 'Sports', color: '#D97706' },
-  { slug: 'entertainment', name: 'Entertainment', color: '#7C3AED' },
-  { slug: 'business', name: 'Business', color: '#0891B2' },
-  { slug: 'health', name: 'Health', color: '#DC2626' },
-  { slug: 'science', name: 'Science', color: '#059669' },
-  { slug: 'world', name: 'World', color: '#1D4ED8' },
-]
-
 export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalizedFeedProps) {
   const { toast } = useToast()
   const [searchQuery, setSearchQuery] = useState('')
@@ -74,6 +62,7 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
   const [mutedTopics, setMutedTopics] = useState<string[]>([])
   const [blockedSources, setBlockedSources] = useState<string[]>([])
   const [generatingArticles, setGeneratingArticles] = useState(false)
+  const [categories, setCategories] = useState<Array<{ slug: string; name: string; color: string }>>([])
   const loadMoreRef = useRef<HTMLDivElement>(null)
   
   const {
@@ -113,6 +102,24 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
       setLastRefresh(new Date())
     }
   })
+
+  // Load categories from database
+  useEffect(() => {
+    const loadCategories = async () => {
+      const { data } = await supabase
+        .from('categories')
+        .select('slug, name, color')
+        .order('name')
+      
+      if (data) {
+        setCategories([
+          { slug: 'all', name: 'All Categories', color: '#3B82F6' },
+          ...data
+        ])
+      }
+    }
+    loadCategories()
+  }, [])
 
   // Load bookmarks from localStorage
   useEffect(() => {
@@ -446,7 +453,7 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
 
         {/* Category Pills */}
         <div className="flex flex-wrap gap-2 mt-6">
-          {CATEGORIES.map((category) => (
+          {categories.map((category) => (
             <button
               key={category.slug}
               onClick={() => setSelectedCategory(category.slug)}
@@ -506,7 +513,7 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
-              {CATEGORIES.map((category) => (
+              {categories.map((category) => (
                 <SelectItem key={category.slug} value={category.slug}>
                   {category.name}
                 </SelectItem>
