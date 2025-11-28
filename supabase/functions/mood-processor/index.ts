@@ -208,8 +208,8 @@ serve(async (req) => {
 
 async function getMoodBasedRecommendations(userId: string, moodProfile: MoodProfile) {
   try {
-    const MIN_ARTICLES = 20; // Minimum articles to return
-    const IDEAL_ARTICLES = 30; // Ideal number of articles
+    const MIN_ARTICLES = 10; // Reduced minimum for more lenient matching
+    const IDEAL_ARTICLES = 25;
     
     // Get articles with mood-relevant fields
     const { data: articles, error } = await supabase
@@ -219,18 +219,19 @@ async function getMoodBasedRecommendations(userId: string, moodProfile: MoodProf
         categories (name, slug, color)
       `)
       .order('created_at', { ascending: false })
-      .limit(200); // Fetch more for better filtering
+      .limit(200);
 
-    if (error || !articles || articles.length === 0) {
+    if (error) {
       console.error('Error fetching articles:', error);
-      // Fallback: return any recent articles
-      const { data: fallbackArticles } = await supabase
-        .from('articles')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(MIN_ARTICLES);
-      return fallbackArticles || [];
     }
+
+    // If no articles at all, return empty array with clear logging
+    if (!articles || articles.length === 0) {
+      console.log('No articles found in database. Please add articles through the admin panel.');
+      return [];
+    }
+
+    console.log(`Processing ${articles.length} articles for mood recommendations`);
 
     // Score articles based on mood profile
     const scoredArticles = articles.map(article => {
@@ -291,37 +292,33 @@ async function getMoodBasedRecommendations(userId: string, moodProfile: MoodProf
       };
     });
 
-    // Cascading filter approach - progressively relax filters until we have enough articles
+    // Much more lenient cascading filter - start at 0 threshold
     let recommendations: any[] = [];
-    let filterLevel = 0;
-    const filterThresholds = [50, 40, 30, 20, 10, 0]; // Progressive score thresholds
+    const filterThresholds = [30, 20, 10, 5, 0]; // More lenient progressive thresholds
     
-    while (recommendations.length < MIN_ARTICLES && filterLevel < filterThresholds.length) {
-      const threshold = filterThresholds[filterLevel];
+    // Try each threshold, but always take ALL articles if we get any
+    for (const threshold of filterThresholds) {
       recommendations = scoredArticles
-        .filter(article => article.mood_recommendation_score > threshold)
-        .sort((a, b) => b.mood_recommendation_score - a.mood_recommendation_score)
-        .slice(0, IDEAL_ARTICLES);
+        .filter(article => article.mood_recommendation_score >= threshold)
+        .sort((a, b) => b.mood_recommendation_score - a.mood_recommendation_score);
       
-      if (recommendations.length < MIN_ARTICLES) {
-        console.log(`Filter level ${filterLevel}: Only ${recommendations.length} articles found with threshold ${threshold}, relaxing...`);
-        filterLevel++;
+      if (recommendations.length >= MIN_ARTICLES) {
+        console.log(`Found ${recommendations.length} articles with threshold ${threshold}`);
+        break;
       }
     }
     
-    // Final fallback: if still not enough, just return highest quality articles
-    if (recommendations.length < MIN_ARTICLES) {
-      console.log('All filters exhausted, returning highest quality articles');
+    // If still nothing, just return all scored articles sorted by score
+    if (recommendations.length === 0) {
+      console.log('Using all available articles regardless of score');
       recommendations = scoredArticles
-        .sort((a, b) => {
-          const qualityA = (a.content_quality_score || 0.5) + (a.engagement_score || 0) / 100;
-          const qualityB = (b.content_quality_score || 0.5) + (b.engagement_score || 0) / 100;
-          return qualityB - qualityA;
-        })
-        .slice(0, IDEAL_ARTICLES);
+        .sort((a, b) => b.mood_recommendation_score - a.mood_recommendation_score);
     }
+    
+    // Limit to ideal number
+    recommendations = recommendations.slice(0, IDEAL_ARTICLES);
 
-    console.log(`Returning ${recommendations.length} mood-based recommendations (filter level: ${filterLevel})`);
+    console.log(`Returning ${recommendations.length} mood-based recommendations`);
 
     // Store mood recommendations in database (insert new, ignore conflicts)
     const moodRecommendations = recommendations.map(article => ({
@@ -348,12 +345,28 @@ async function getMoodBasedRecommendations(userId: string, moodProfile: MoodProf
 
   } catch (error) {
     console.error('Error generating mood recommendations:', error);
-    // Emergency fallback: return any recent articles
-    const { data: emergencyArticles } = await supabase
-      .from('articles')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(20);
-    return emergencyArticles || [];
+    // Emergency fallback: return any recent articles with full data
+    try {
+      const { data: emergencyArticles } = await supabase
+        .from('articles')
+        .select(`
+          *,
+          categories (name, slug, color)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(25);
+      
+      if (emergencyArticles && emergencyArticles.length > 0) {
+        console.log(`Emergency fallback: returning ${emergencyArticles.length} recent articles`);
+        return emergencyArticles.map(article => ({
+          ...article,
+          mood_recommendation_score: 50,
+          mood_match_reasons: ['Recently published', 'High quality content']
+        }));
+      }
+    } catch (fallbackError) {
+      console.error('Emergency fallback also failed:', fallbackError);
+    }
+    return [];
   }
 }
