@@ -59,7 +59,7 @@ export default function CategorizedNewsFeed({ userId }: CategorizedNewsFeedProps
     try {
       setLoading(true)
       
-      // Fetch articles with their categories
+      // Fetch articles with their categories (only from last 7 days)
       const { data: articles, error } = await supabase
         .from('articles')
         .select(`
@@ -72,7 +72,7 @@ export default function CategorizedNewsFeed({ userId }: CategorizedNewsFeedProps
           )
         `)
         .not('category_id', 'is', null)
-        .gte('published_at', new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString())
+        .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
         .order('published_at', { ascending: false })
         .limit(100)
 
