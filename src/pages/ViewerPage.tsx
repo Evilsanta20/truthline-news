@@ -425,6 +425,7 @@ export default function ViewerPage() {
           <MoodBasedFeed
             userId={userId}
             moodProfile={moodProfile}
+            initialMood={currentMood}
             className="w-full"
           />
         </div>

@@ -13,6 +13,8 @@ interface MoodBasedFeedProps {
   userId: string
   moodProfile?: any
   className?: string
+  /** Optional current mood passed from parent (e.g. ViewerPage) so we don't rely only on DB */
+  initialMood?: any
 }
 
 interface MoodRecommendation extends PersonalizedArticle {
@@ -23,11 +25,18 @@ interface MoodRecommendation extends PersonalizedArticle {
   mood_depth_score?: number
 }
 
-export default function MoodBasedFeed({ userId, moodProfile, className }: MoodBasedFeedProps) {
+export default function MoodBasedFeed({ userId, moodProfile, className, initialMood }: MoodBasedFeedProps) {
   const [recommendations, setRecommendations] = useState<MoodRecommendation[]>([])
   const [loading, setLoading] = useState(false)
-  const [currentMood, setCurrentMood] = useState<any>(null)
+  const [currentMood, setCurrentMood] = useState<any>(initialMood || null)
   const [activeSection, setActiveSection] = useState<'for-you' | 'brief' | 'deep-dive' | 'positive'>('for-you')
+
+  // Keep local mood in sync with parent-provided mood when available
+  useEffect(() => {
+    if (initialMood) {
+      setCurrentMood(initialMood)
+    }
+  }, [initialMood])
 
   // Load current mood and recommendations
   useEffect(() => {
@@ -38,27 +47,33 @@ export default function MoodBasedFeed({ userId, moodProfile, className }: MoodBa
     try {
       setLoading(true)
 
-      // Get current mood from user preferences
-      const { data: prefs } = await supabase
-        .from('user_preferences')
-        .select('current_mood, mood_last_updated')
-        .eq('user_id', userId)
-        .single()
+      // If we don't have a mood from parent, try to load it from user_preferences
+      if (!initialMood) {
+        const { data: prefs, error } = await supabase
+          .from('user_preferences')
+          .select('current_mood, mood_last_updated')
+          .eq('user_id', userId)
+          .maybeSingle()
 
-      if (prefs?.current_mood) {
-        setCurrentMood(prefs.current_mood)
+        if (error) {
+          console.error('Error loading user mood:', error)
+        }
+
+        if (prefs?.current_mood) {
+          setCurrentMood(prefs.current_mood)
+        }
       }
 
       // Get mood-based recommendations
-      const { data: moodRecs, error } = await supabase.functions.invoke('mood-processor', {
+      const { data: moodRecs, error: recError } = await supabase.functions.invoke('mood-processor', {
         body: { 
           action: 'getMoodRecommendations',
           userId: userId
         }
       })
 
-      if (error) {
-        console.error('Error loading mood recommendations:', error)
+      if (recError) {
+        console.error('Error loading mood recommendations:', recError)
         return
       }
 
