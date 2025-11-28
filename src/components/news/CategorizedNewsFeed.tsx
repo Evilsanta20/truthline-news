@@ -72,7 +72,7 @@ export default function CategorizedNewsFeed({ userId }: CategorizedNewsFeedProps
           )
         `)
         .not('category_id', 'is', null)
-        .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+        .gte('published_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
         .order('published_at', { ascending: false })
         .limit(100)
 
