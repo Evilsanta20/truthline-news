@@ -8,6 +8,7 @@ import { Bookmark, BookmarkCheck, Eye, Clock, ExternalLink } from 'lucide-react'
 import { useState } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
+import { stripHtml, truncateText } from '@/utils/textUtils'
 
 interface Article {
   id: string
@@ -134,9 +135,10 @@ export const ArticleCard = ({ article, variant = 'default', onBookmarkChange }: 
     }
   }
 
-  const truncateText = (text: string, maxLength: number) => {
-    if (text.length <= maxLength) return text
-    return text.slice(0, maxLength) + '...'
+  const getCleanDescription = () => {
+    if (!article.description) return ''
+    const cleanText = stripHtml(article.description)
+    return variant === 'featured' ? cleanText : truncateText(cleanText, 150)
   }
 
   if (variant === 'compact') {
@@ -279,7 +281,7 @@ export const ArticleCard = ({ article, variant = 'default', onBookmarkChange }: 
 
           {article.description && (
             <p className="font-body text-base leading-relaxed mb-4 line-clamp-3 text-foreground/90">
-              {variant === 'featured' ? article.description : truncateText(article.description, 150)}
+              {getCleanDescription()}
             </p>
           )}
 
