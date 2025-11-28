@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { usePersonalization } from '@/hooks/usePersonalization'
@@ -13,16 +12,14 @@ import {
   ChevronDown,
   ExternalLink,
   Clock,
-  TrendingUp,
-  Play,
-  Pause,
-  Volume2,
-  VolumeX,
-  RotateCcw,
   Star,
-  Flame
+  Flame,
+  X
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { cn } from '@/lib/utils'
+
+const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=1200&h=1600&fit=crop'
 
 interface ArticleReelsProps {
   userId: string
@@ -31,12 +28,12 @@ interface ArticleReelsProps {
 export default function ArticleReels({ userId }: ArticleReelsProps) {
   const { toast } = useToast()
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [isPlaying, setIsPlaying] = useState(true)
-  const [isMuted, setIsMuted] = useState(false)
   const [bookmarks, setBookmarks] = useState<Set<string>>(new Set())
-  const [readingProgress, setReadingProgress] = useState(0)
+  const [likes, setLikes] = useState<Set<string>>(new Set())
+  const [touchStart, setTouchStart] = useState(0)
+  const [touchEnd, setTouchEnd] = useState(0)
+  const [imageError, setImageError] = useState<Set<string>>(new Set())
   const reelsContainerRef = useRef<HTMLDivElement>(null)
-  const progressIntervalRef = useRef<NodeJS.Timeout>()
   
   const {
     recommendations,
@@ -45,44 +42,18 @@ export default function ArticleReels({ userId }: ArticleReelsProps) {
     refreshRecommendations
   } = usePersonalization(userId)
 
-  // Load bookmarks from localStorage
+  // Load bookmarks and likes from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem(`bookmarks_${userId}`)
-    if (saved) {
-      setBookmarks(new Set(JSON.parse(saved)))
-    }
+    const savedBookmarks = localStorage.getItem(`bookmarks_${userId}`)
+    const savedLikes = localStorage.getItem(`likes_${userId}`)
+    if (savedBookmarks) setBookmarks(new Set(JSON.parse(savedBookmarks)))
+    if (savedLikes) setLikes(new Set(JSON.parse(savedLikes)))
   }, [userId])
-
-  // Auto-play functionality
-  useEffect(() => {
-    if (isPlaying && recommendations.length > 0) {
-      progressIntervalRef.current = setInterval(() => {
-        setReadingProgress(prev => {
-          if (prev >= 100) {
-            nextReel()
-            return 0
-          }
-          return prev + 1
-        })
-      }, 80) // 8 seconds total (100 * 80ms)
-    } else {
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current)
-      }
-    }
-
-    return () => {
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current)
-      }
-    }
-  }, [isPlaying, currentIndex, recommendations.length])
 
   // Track view when reel changes
   useEffect(() => {
     if (recommendations[currentIndex]) {
       trackInteraction(recommendations[currentIndex].id, 'view')
-      setReadingProgress(0)
     }
   }, [currentIndex, recommendations, trackInteraction])
 
@@ -91,73 +62,97 @@ export default function ArticleReels({ userId }: ArticleReelsProps) {
     const handleKeyPress = (e: KeyboardEvent) => {
       switch (e.key) {
         case 'ArrowUp':
+        case 'w':
           e.preventDefault()
           previousReel()
           break
         case 'ArrowDown':
+        case 's':
           e.preventDefault()
           nextReel()
-          break
-        case ' ':
-          e.preventDefault()
-          setIsPlaying(!isPlaying)
-          break
-        case 'Escape':
-          setIsPlaying(false)
           break
       }
     }
 
     window.addEventListener('keydown', handleKeyPress)
     return () => window.removeEventListener('keydown', handleKeyPress)
-  }, [isPlaying])
+  }, [currentIndex, recommendations.length])
+
+  // Touch handlers for swipe gestures
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientY)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientY)
+  }
+
+  const handleTouchEnd = () => {
+    if (touchStart - touchEnd > 75) {
+      // Swiped up
+      nextReel()
+    }
+
+    if (touchStart - touchEnd < -75) {
+      // Swiped down
+      previousReel()
+    }
+  }
 
   const nextReel = useCallback(() => {
-    setCurrentIndex(prev => (prev + 1) % recommendations.length)
-    setReadingProgress(0)
-  }, [recommendations.length])
+    if (currentIndex < recommendations.length - 1) {
+      setCurrentIndex(prev => prev + 1)
+    }
+  }, [currentIndex, recommendations.length])
 
   const previousReel = useCallback(() => {
-    setCurrentIndex(prev => prev === 0 ? recommendations.length - 1 : prev - 1)
-    setReadingProgress(0)
-  }, [recommendations.length])
+    if (currentIndex > 0) {
+      setCurrentIndex(prev => prev - 1)
+    }
+  }, [currentIndex])
 
   const toggleBookmark = (articleId: string) => {
     const newBookmarks = new Set(bookmarks)
     if (newBookmarks.has(articleId)) {
       newBookmarks.delete(articleId)
       trackInteraction(articleId, 'bookmark', -1)
-      toast({
-        title: "Bookmark removed",
-        description: "Article removed from bookmarks"
-      })
+      toast({ title: "Bookmark removed" })
     } else {
       newBookmarks.add(articleId)
       trackInteraction(articleId, 'bookmark', 1)
-      toast({
-        title: "Bookmark added", 
-        description: "Article saved to bookmarks"
-      })
+      toast({ title: "Bookmark added" })
     }
     setBookmarks(newBookmarks)
     localStorage.setItem(`bookmarks_${userId}`, JSON.stringify([...newBookmarks]))
   }
 
-  const handleLike = (articleId: string) => {
-    trackInteraction(articleId, 'like')
-    toast({
-      title: "Article liked",
-      description: "This will improve your recommendations"
-    })
+  const toggleLike = (articleId: string) => {
+    const newLikes = new Set(likes)
+    if (newLikes.has(articleId)) {
+      newLikes.delete(articleId)
+      trackInteraction(articleId, 'like', -1)
+      toast({ title: "Like removed" })
+    } else {
+      newLikes.add(articleId)
+      trackInteraction(articleId, 'like', 1)
+      toast({ title: "Article liked" })
+    }
+    setLikes(newLikes)
+    localStorage.setItem(`likes_${userId}`, JSON.stringify([...newLikes]))
   }
 
-  const handleShare = (articleId: string) => {
-    trackInteraction(articleId, 'share')
-    navigator.clipboard.writeText(window.location.origin + '/article/' + articleId)
-    toast({
-      title: "Link copied",
-      description: "Article link copied to clipboard"
-    })
+  const handleShare = (article: any) => {
+    trackInteraction(article.id, 'share')
+    if (navigator.share) {
+      navigator.share({
+        title: article.title,
+        text: article.description,
+        url: article.url
+      }).catch(() => {})
+    } else {
+      navigator.clipboard.writeText(article.url)
+      toast({ title: "Link copied to clipboard" })
+    }
   }
 
   const handleReadMore = (article: any) => {
@@ -177,6 +172,10 @@ export default function ArticleReels({ userId }: ArticleReelsProps) {
     return `${Math.floor(diffInHours / 24)}d ago`
   }
 
+  const handleImageError = (articleId: string) => {
+    setImageError(prev => new Set([...prev, articleId]))
+  }
+
   if (loading || recommendations.length === 0) {
     return (
       <div className="fixed inset-0 bg-background flex items-center justify-center z-50">
@@ -189,137 +188,162 @@ export default function ArticleReels({ userId }: ArticleReelsProps) {
   }
 
   const currentArticle = recommendations[currentIndex]
+  const articleImage = imageError.has(currentArticle.id) ? FALLBACK_IMAGE : (currentArticle.url_to_image || FALLBACK_IMAGE)
 
   return (
-    <div className="fixed inset-0 bg-black z-50 overflow-hidden" ref={reelsContainerRef}>
+    <div 
+      className="fixed inset-0 bg-black z-50 overflow-hidden" 
+      ref={reelsContainerRef}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       {/* Progress Indicators */}
-      <div className="absolute top-4 left-4 right-4 z-20 flex space-x-1">
-        {recommendations.slice(0, 5).map((_, index) => (
+      <div className="absolute top-4 left-4 right-4 z-30 flex space-x-1">
+        {recommendations.slice(0, Math.min(10, recommendations.length)).map((_, index) => (
           <div
             key={index}
-            className="flex-1 h-1 bg-white/30 rounded-full overflow-hidden"
-          >
-            <div
-              className="h-full bg-white transition-all duration-100 ease-linear"
-              style={{
-                width: index < currentIndex ? '100%' : 
-                       index === currentIndex ? `${readingProgress}%` : '0%'
-              }}
-            />
-          </div>
+            className={cn(
+              "flex-1 h-1 rounded-full transition-all",
+              index < currentIndex ? "bg-white" : index === currentIndex ? "bg-white/60" : "bg-white/20"
+            )}
+          />
         ))}
       </div>
 
-      {/* Main Content */}
-      <div className="relative h-full">
-        <Card className="h-full bg-gradient-to-b from-black/20 via-transparent to-black/60 border-0 rounded-none">
-          <CardContent className="h-full p-0 relative">
-            {/* Background Article Image/Gradient */}
-            <div 
-              className="absolute inset-0 bg-gradient-to-br from-primary/20 via-accent/10 to-background/80"
-              style={{
-                background: `linear-gradient(135deg, ${currentArticle.categories?.color || '#1D4ED8'}20, rgba(0,0,0,0.8))`
-              }}
-            />
+      {/* Close Button */}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => window.history.back()}
+        className="absolute top-4 right-4 z-30 text-white bg-black/30 hover:bg-black/50 backdrop-blur-sm"
+      >
+        <X className="w-5 h-5" />
+      </Button>
 
-            {/* Article Content */}
-            <div className="relative h-full flex flex-col justify-end p-6 text-white">
-              {/* Category and Time */}
-              <div className="mb-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge 
-                    className="bg-white/20 text-white border-white/30 backdrop-blur-sm"
-                    style={{ backgroundColor: `${currentArticle.categories?.color}40` }}
-                  >
-                    {currentArticle.categories?.name}
-                  </Badge>
-                  {currentArticle.is_trending && (
-                    <Badge className="bg-accent/80 text-white">
-                      <Flame className="w-3 h-3 mr-1" />
-                      Trending
-                    </Badge>
-                  )}
-                  {currentArticle.is_featured && (
-                    <Badge className="bg-primary/80 text-white">
-                      <Star className="w-3 h-3 mr-1" />
-                      Featured
-                    </Badge>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 text-white/80 text-sm">
-                  <Clock className="w-4 h-4" />
-                  <span>{formatTimeAgo(currentArticle.created_at)}</span>
-                  <Eye className="w-4 h-4 ml-2" />
-                  <span>{currentArticle.engagement_score || 0}</span>
-                </div>
-              </div>
+      {/* Main Reel Content */}
+      <div className="relative h-full w-full">
+        {/* Background Image */}
+        <div className="absolute inset-0">
+          <img
+            src={articleImage}
+            alt={currentArticle.title}
+            className="w-full h-full object-cover"
+            onError={() => handleImageError(currentArticle.id)}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/80" />
+        </div>
 
-              {/* Article Title */}
-              <h1 className="text-2xl md:text-3xl font-bold mb-3 leading-tight">
-                {currentArticle.title}
-              </h1>
+        {/* Content Overlay */}
+        <div className="relative h-full flex flex-col justify-end p-6 md:p-8 text-white z-10">
+          {/* Category Badges */}
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            {currentArticle.categories && (
+              <Badge 
+                className="bg-white/20 text-white border-white/30 backdrop-blur-md"
+                style={{ backgroundColor: `${currentArticle.categories.color}60` }}
+              >
+                {currentArticle.categories.name}
+              </Badge>
+            )}
+            {currentArticle.is_trending && (
+              <Badge className="bg-red-500/80 text-white backdrop-blur-md">
+                <Flame className="w-3 h-3 mr-1" />
+                Trending
+              </Badge>
+            )}
+            {currentArticle.is_featured && (
+              <Badge className="bg-yellow-500/80 text-white backdrop-blur-md">
+                <Star className="w-3 h-3 mr-1" />
+                Featured
+              </Badge>
+            )}
+          </div>
 
-              {/* Article Description */}
-              <p className="text-white/90 text-base mb-4 line-clamp-3 leading-relaxed">
-                {currentArticle.description}
-              </p>
-
-              {/* Source */}
-              <div className="flex items-center gap-2 mb-6 text-white/70 text-sm">
-                <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
-                  <span className="text-xs font-bold">
-                    {currentArticle.source_name?.charAt(0) || 'N'}
-                  </span>
-                </div>
-                <span>{currentArticle.source_name}</span>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <Button
-                    variant="ghost"
-                    size="lg"
-                    onClick={() => handleLike(currentArticle.id)}
-                    className="text-white hover:text-red-400 hover:bg-white/10 transition-all"
-                  >
-                    <Heart className="w-6 h-6" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="lg"
-                    onClick={() => toggleBookmark(currentArticle.id)}
-                    className={`transition-all hover:bg-white/10 ${
-                      bookmarks.has(currentArticle.id) ? 'text-accent' : 'text-white hover:text-accent'
-                    }`}
-                  >
-                    {bookmarks.has(currentArticle.id) ? (
-                      <BookmarkCheck className="w-6 h-6" />
-                    ) : (
-                      <Bookmark className="w-6 h-6" />
-                    )}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="lg"
-                    onClick={() => handleShare(currentArticle.id)}
-                    className="text-white hover:text-primary hover:bg-white/10 transition-all"
-                  >
-                    <Share2 className="w-6 h-6" />
-                  </Button>
-                </div>
-
-                <Button
-                  onClick={() => handleReadMore(currentArticle)}
-                  className="bg-white text-black hover:bg-white/90 font-semibold"
-                >
-                  Read Full Article
-                  <ExternalLink className="w-4 h-4 ml-2" />
-                </Button>
-              </div>
+          {/* Metadata */}
+          <div className="flex items-center gap-3 text-white/80 text-sm mb-3">
+            <div className="flex items-center gap-1">
+              <Clock className="w-4 h-4" />
+              <span>{formatTimeAgo(currentArticle.published_at || currentArticle.created_at)}</span>
             </div>
-          </CardContent>
-        </Card>
+            <span>•</span>
+            <div className="flex items-center gap-1">
+              <Eye className="w-4 h-4" />
+              <span>{currentArticle.engagement_score || 0}</span>
+            </div>
+            <span>•</span>
+            <span>{currentArticle.reading_time_minutes || 3}m read</span>
+          </div>
+
+          {/* Article Title */}
+          <h1 className="text-2xl md:text-4xl font-bold mb-3 leading-tight line-clamp-3">
+            {currentArticle.title}
+          </h1>
+
+          {/* Article Description */}
+          <p className="text-white/90 text-base md:text-lg mb-4 line-clamp-2 leading-relaxed">
+            {currentArticle.description}
+          </p>
+
+          {/* Source */}
+          <div className="flex items-center gap-2 mb-6 text-white/80">
+            <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+              <span className="text-sm font-bold">
+                {currentArticle.source_name?.charAt(0) || 'N'}
+              </span>
+            </div>
+            <span className="text-sm">{currentArticle.source_name}</span>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="lg"
+                onClick={() => toggleLike(currentArticle.id)}
+                className={cn(
+                  "text-white hover:bg-white/10 transition-all rounded-full",
+                  likes.has(currentArticle.id) && "text-red-500"
+                )}
+              >
+                <Heart className={cn("w-7 h-7", likes.has(currentArticle.id) && "fill-current")} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="lg"
+                onClick={() => toggleBookmark(currentArticle.id)}
+                className={cn(
+                  "text-white hover:bg-white/10 transition-all rounded-full",
+                  bookmarks.has(currentArticle.id) && "text-blue-400"
+                )}
+              >
+                {bookmarks.has(currentArticle.id) ? (
+                  <BookmarkCheck className="w-7 h-7 fill-current" />
+                ) : (
+                  <Bookmark className="w-7 h-7" />
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="lg"
+                onClick={() => handleShare(currentArticle)}
+                className="text-white hover:bg-white/10 transition-all rounded-full"
+              >
+                <Share2 className="w-7 h-7" />
+              </Button>
+            </div>
+
+            <Button
+              onClick={() => handleReadMore(currentArticle)}
+              className="bg-white text-black hover:bg-white/90 font-semibold px-6"
+              size="lg"
+            >
+              Read More
+              <ExternalLink className="w-4 h-4 ml-2" />
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Navigation Controls */}
@@ -328,7 +352,7 @@ export default function ArticleReels({ userId }: ArticleReelsProps) {
           variant="ghost"
           size="icon"
           onClick={previousReel}
-          className="text-white bg-black/30 hover:bg-black/50 backdrop-blur-sm"
+          className="text-white bg-black/30 hover:bg-black/50 backdrop-blur-sm rounded-full w-12 h-12"
           disabled={currentIndex === 0}
         >
           <ChevronUp className="w-6 h-6" />
@@ -336,16 +360,8 @@ export default function ArticleReels({ userId }: ArticleReelsProps) {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => setIsPlaying(!isPlaying)}
-          className="text-white bg-black/30 hover:bg-black/50 backdrop-blur-sm"
-        >
-          {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
           onClick={nextReel}
-          className="text-white bg-black/30 hover:bg-black/50 backdrop-blur-sm"
+          className="text-white bg-black/30 hover:bg-black/50 backdrop-blur-sm rounded-full w-12 h-12"
           disabled={currentIndex === recommendations.length - 1}
         >
           <ChevronDown className="w-6 h-6" />
@@ -353,29 +369,19 @@ export default function ArticleReels({ userId }: ArticleReelsProps) {
       </div>
 
       {/* Article Counter */}
-      <div className="absolute left-4 bottom-4 z-20 text-white/80 text-sm bg-black/30 px-3 py-1 rounded-full backdrop-blur-sm">
+      <div className="absolute left-4 bottom-4 z-20 text-white text-sm bg-black/40 px-4 py-2 rounded-full backdrop-blur-md font-medium">
         {currentIndex + 1} / {recommendations.length}
       </div>
 
-      {/* Recommendation Score */}
-      <div className="absolute right-4 bottom-4 z-20 flex items-center gap-1 text-white/80 text-sm bg-black/30 px-3 py-1 rounded-full backdrop-blur-sm">
-        <TrendingUp className="w-4 h-4" />
-        <span>{Math.round(currentArticle.recommendation_score || 0)}</span>
-      </div>
-
-      {/* Click Areas for Navigation */}
-      <div 
-        className="absolute left-0 top-0 w-1/3 h-full z-10 cursor-pointer"
-        onClick={previousReel}
-      />
-      <div 
-        className="absolute right-0 top-0 w-1/3 h-full z-10 cursor-pointer"
-        onClick={nextReel}
-      />
-      <div 
-        className="absolute center top-0 w-1/3 h-full z-10 cursor-pointer"
-        onClick={() => setIsPlaying(!isPlaying)}
-      />
+      {/* Swipe Hint (shows briefly) */}
+      {currentIndex === 0 && (
+        <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2 z-20 text-white/60 text-sm animate-bounce">
+          <div className="flex flex-col items-center gap-2">
+            <ChevronUp className="w-6 h-6" />
+            <span>Swipe up for next</span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
