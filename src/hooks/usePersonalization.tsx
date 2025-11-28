@@ -164,12 +164,14 @@ export const usePersonalization = (userId: string) => {
       if (error) {
         console.error('Error getting recommendations:', error)
         // Fallback to direct database query if AI function fails
+        const recentCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
         const { data: fallbackArticles } = await supabase
           .from('articles')
           .select(`
             *,
             categories (name, slug, color)
           `)
+          .gte('published_at', recentCutoff)
           .order('created_at', { ascending: false })
           .limit(limit)
         

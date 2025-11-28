@@ -45,7 +45,7 @@ serve(async (req) => {
       .order('created_at', { ascending: false })
       .limit(200);
 
-    // Build article query with strict freshness window
+    // Build article query with strict freshness window (max 7 days by published date)
     let articleQuery = supabase
       .from('articles')
       .select(`
@@ -53,14 +53,15 @@ serve(async (req) => {
         categories (name, color)
       `);
 
-    // Determine effective 'since' with a 48h clamp to avoid stale feeds
-    const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-    const effectiveSince = since
-      ? new Date(Math.max(new Date(since).getTime(), Date.now() - 48 * 60 * 60 * 1000)).toISOString()
-      : fortyEightHoursAgo;
+    // Determine effective 'since' with a 7-day clamp to avoid stale feeds
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const sinceDate = since ? new Date(since) : sevenDaysAgo;
+    const effectiveSince = new Date(
+      Math.max(sevenDaysAgo.getTime(), sinceDate.getTime())
+    ).toISOString();
 
-    // Prefer last_verified_at to capture latest validated items
-    articleQuery = articleQuery.gte('last_verified_at', effectiveSince);
+    // Only consider articles published after the effective cutoff
+    articleQuery = articleQuery.gte('published_at', effectiveSince);
 
     // Apply content quality filters
     articleQuery = articleQuery
@@ -79,15 +80,17 @@ serve(async (req) => {
       .order('created_at', { ascending: false })
       .limit(since ? 150 : 300);
 
-    // If no articles found with date filter, try without date filter as fallback
+    // If no articles found with date filter, try a constrained fallback query
     if (!articles || articles.length === 0) {
       console.log('No articles found with date filter, trying fallback query...');
+      const sevenDaysAgoIso = sevenDaysAgo.toISOString();
       const { data: fallbackArticles } = await supabase
         .from('articles')
         .select(`
           *,
           categories (name, color)
         `)
+        .gte('published_at', sevenDaysAgoIso)
         .gte('content_quality_score', 0.3)
         .gte('credibility_score', 0.2)
         .lte('bias_score', 0.9)
