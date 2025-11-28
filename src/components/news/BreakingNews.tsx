@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Zap, Clock, ExternalLink, TrendingUp } from 'lucide-react'
+import { Zap, Clock, ExternalLink, TrendingUp, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
 import { stripAndTruncate } from '@/utils/textUtils'
@@ -32,9 +32,12 @@ export default function BreakingNews({ className }: BreakingNewsProps) {
   const [articles, setArticles] = useState<BreakingArticle[]>([])
   const [loading, setLoading] = useState(true)
   const [newArticleCount, setNewArticleCount] = useState(0)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
-  const fetchBreakingNews = async () => {
+  const fetchBreakingNews = async (showToast = false) => {
     try {
+      if (showToast) setIsRefreshing(true)
+      
       const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
       
       const { data, error } = await supabase
@@ -62,11 +65,16 @@ export default function BreakingNews({ className }: BreakingNewsProps) {
       if (error) throw error
 
       setArticles(data || [])
+      
+      if (showToast) {
+        toast.success('Breaking news refreshed!')
+      }
     } catch (error) {
       console.error('Error fetching breaking news:', error)
       toast.error('Failed to load breaking news')
     } finally {
       setLoading(false)
+      setIsRefreshing(false)
     }
   }
 
@@ -190,15 +198,26 @@ export default function BreakingNews({ className }: BreakingNewsProps) {
                 LIVE
               </Badge>
             </CardTitle>
-            {newArticleCount > 0 && (
-              <Badge 
-                variant="secondary" 
-                className="cursor-pointer animate-bounce bg-green-500 text-white hover:bg-green-600"
-                onClick={clearNewCount}
+            <div className="flex items-center gap-2">
+              {newArticleCount > 0 && (
+                <Badge 
+                  variant="secondary" 
+                  className="cursor-pointer animate-bounce bg-green-500 text-white hover:bg-green-600"
+                  onClick={clearNewCount}
+                >
+                  +{newArticleCount} new
+                </Badge>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => fetchBreakingNews(true)}
+                disabled={isRefreshing}
+                className="h-8 w-8"
               >
-                +{newArticleCount} new
-              </Badge>
-            )}
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
           </div>
           <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
             <Clock className="w-3 h-3" />
