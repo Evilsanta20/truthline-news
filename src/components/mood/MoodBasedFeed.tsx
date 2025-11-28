@@ -15,9 +15,14 @@ interface MoodBasedFeedProps {
   className?: string
   /** Optional current mood passed from parent (e.g. ViewerPage) so we don't rely only on DB */
   initialMood?: any
+  /** Optional initial recommendations from parent hook so we can show fresh mood results immediately */
+  initialRecommendations?: MoodRecommendation[]
 }
 
-interface MoodRecommendation extends PersonalizedArticle {
+interface MoodRecommendation extends Omit<PersonalizedArticle, 'recommendation_score'> {
+  // Optional generic recommendation score if present
+  recommendation_score?: number
+  // Mood-specific scoring fields
   mood_recommendation_score: number
   mood_match_reasons: string[]
   estimated_read_time?: number
@@ -25,23 +30,33 @@ interface MoodRecommendation extends PersonalizedArticle {
   mood_depth_score?: number
 }
 
-export default function MoodBasedFeed({ userId, moodProfile, className, initialMood }: MoodBasedFeedProps) {
-  const [recommendations, setRecommendations] = useState<MoodRecommendation[]>([])
+export default function MoodBasedFeed({ userId, moodProfile, className, initialMood, initialRecommendations }: MoodBasedFeedProps) {
+  const [recommendations, setRecommendations] = useState<MoodRecommendation[]>(initialRecommendations || [])
   const [loading, setLoading] = useState(false)
   const [currentMood, setCurrentMood] = useState<any>(initialMood || null)
   const [activeSection, setActiveSection] = useState<'for-you' | 'brief' | 'deep-dive' | 'positive'>('for-you')
 
-  // Keep local mood in sync with parent-provided mood when available
+  // Keep local mood & recommendations in sync with parent-provided values when available
   useEffect(() => {
     if (initialMood) {
       setCurrentMood(initialMood)
     }
   }, [initialMood])
 
-  // Load current mood and recommendations
   useEffect(() => {
+    if (initialRecommendations && initialRecommendations.length > 0) {
+      setRecommendations(initialRecommendations)
+    }
+  }, [initialRecommendations])
+
+  // Load current mood and recommendations (only hit backend if we don't already have fresh ones)
+  useEffect(() => {
+    // If parent already gave us recommendations for this mood, skip initial fetch
+    if (initialRecommendations && initialRecommendations.length > 0) {
+      return
+    }
     loadMoodAndRecommendations()
-  }, [userId, moodProfile])
+  }, [userId, moodProfile, initialRecommendations])
 
   const loadMoodAndRecommendations = async () => {
     try {

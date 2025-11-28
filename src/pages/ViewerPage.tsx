@@ -42,6 +42,7 @@ export default function ViewerPage() {
     currentMood,
     moodPresets,
     moodProfile,
+    recommendations: moodRecommendations,
     loading: moodLoading,
     processMood,
     saveMoodPreset,
@@ -426,6 +427,7 @@ export default function ViewerPage() {
             userId={userId}
             moodProfile={moodProfile}
             initialMood={currentMood}
+            initialRecommendations={moodRecommendations}
             className="w-full"
           />
         </div>
