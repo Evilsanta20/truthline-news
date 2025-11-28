@@ -118,19 +118,41 @@ serve(async (req) => {
         timestamp: new Date().toISOString()
       };
 
-      // Update user preferences with current mood
-      const { error: updateError } = await supabase
+      // Update or create user preferences with current mood
+      const { data: existingPrefs, error: prefsError } = await supabase
         .from('user_preferences')
-        .upsert({
-          user_id: userId,
-          current_mood: moodEntry,
-          mood_last_updated: new Date().toISOString()
-        }, {
-          onConflict: 'user_id'
-        });
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle();
 
-      if (updateError) {
-        console.error('Error saving mood:', updateError);
+      if (prefsError && prefsError.code !== 'PGRST116') {
+        console.error('Error fetching user preferences:', prefsError);
+      }
+
+      if (existingPrefs?.id) {
+        const { error: updateError } = await supabase
+          .from('user_preferences')
+          .update({
+            current_mood: moodEntry,
+            mood_last_updated: new Date().toISOString()
+          })
+          .eq('id', existingPrefs.id);
+
+        if (updateError) {
+          console.error('Error updating mood:', updateError);
+        }
+      } else {
+        const { error: insertError } = await supabase
+          .from('user_preferences')
+          .insert({
+            user_id: userId,
+            current_mood: moodEntry,
+            mood_last_updated: new Date().toISOString()
+          });
+
+        if (insertError) {
+          console.error('Error inserting mood:', insertError);
+        }
       }
 
       // Get personalized recommendations based on mood
