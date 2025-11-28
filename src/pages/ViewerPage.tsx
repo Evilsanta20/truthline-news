@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import EnhancedPersonalizedFeed from '@/components/news/EnhancedPersonalizedFeed'
+import CategorizedNewsFeed from '@/components/news/CategorizedNewsFeed'
 import ArticleReels from '@/components/news/ArticleReels'
 import MoodInput from '@/components/mood/MoodInput'
 import MoodBasedFeed from '@/components/mood/MoodBasedFeed'
@@ -15,6 +16,7 @@ import {
   Home,
   TrendingUp,
   Bookmark,
+  Globe,
   Search,
   Bell,
   Menu,
@@ -85,6 +87,7 @@ export default function ViewerPage() {
     { id: 'home', label: 'Home', icon: Home },
     { id: 'trending', label: 'Trending', icon: TrendingUp },
     { id: 'bookmarks', label: 'Bookmarks', icon: Bookmark },
+    { id: 'categories', label: 'Categories', icon: Globe },
   ]
 
   if (!userId) {
@@ -160,7 +163,7 @@ export default function ViewerPage() {
                 <h1 className="text-2xl font-bold gradient-text">AI News Digest</h1>
               </div>
               <Badge variant="outline" className="hidden sm:inline-flex">
-                <Sparkles className="w-3 h-3 mr-1" />
+                <Globe className="w-3 h-3 mr-1" />
                 Personalized
               </Badge>
             </div>
@@ -382,7 +385,18 @@ export default function ViewerPage() {
       </header>
 
       {/* Content Based on View Mode */}
-      {viewMode === 'mood' && currentMood ? (
+      {viewMode === 'categories' ? (
+        <div>
+          {/* Breaking News Banner at Top */}
+          <div className="bg-background border-b border-border">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+              <BreakingNews />
+            </div>
+          </div>
+          
+          <CategorizedNewsFeed userId={userId} />
+        </div>
+      ) : viewMode === 'mood' && currentMood ? (
         <div className="max-w-7xl mx-auto p-6">
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-3">
