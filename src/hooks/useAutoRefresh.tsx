@@ -6,6 +6,7 @@ interface UseAutoRefreshOptions {
   refreshInterval?: number // in seconds, default 300 (5 minutes)
   onNewArticles?: (count: number) => void
   onRefreshComplete?: () => void
+  enableDeduplication?: boolean // Track and exclude shown articles
 }
 
 interface Article {
@@ -23,16 +24,57 @@ export const useAutoRefresh = ({
   userId,
   refreshInterval = 300,
   onNewArticles,
-  onRefreshComplete
+  onRefreshComplete,
+  enableDeduplication = true
 }: UseAutoRefreshOptions) => {
   const [articles, setArticles] = useState<Article[]>([])
   const [latestTimestamp, setLatestTimestamp] = useState<string | null>(null)
   const [pendingArticles, setPendingArticles] = useState<Article[]>([])
   const [isAtTop, setIsAtTop] = useState(true)
   const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [nextRefresh, setNextRefresh] = useState(refreshInterval)
+  const [shownArticleIds, setShownArticleIds] = useState<Set<string>>(new Set())
+  const [hasMore, setHasMore] = useState(true)
   
   const scrollListenerRef = useRef<() => void>()
+
+  // Load shown article IDs from localStorage
+  useEffect(() => {
+    if (enableDeduplication) {
+      const saved = localStorage.getItem(`shown_articles_${userId}`)
+      if (saved) {
+        try {
+          setShownArticleIds(new Set(JSON.parse(saved)))
+        } catch (e) {
+          console.error('Error loading shown articles:', e)
+        }
+      }
+    }
+  }, [userId, enableDeduplication])
+
+  // Save shown article IDs to localStorage
+  const saveShownArticles = useCallback((ids: Set<string>) => {
+    if (enableDeduplication) {
+      localStorage.setItem(`shown_articles_${userId}`, JSON.stringify([...ids]))
+    }
+  }, [userId, enableDeduplication])
+
+  // Filter out already shown articles
+  const filterNewArticles = useCallback((articleList: Article[]) => {
+    if (!enableDeduplication) return articleList
+    return articleList.filter(article => !shownArticleIds.has(article.id))
+  }, [shownArticleIds, enableDeduplication])
+
+  // Mark articles as shown
+  const markArticlesAsShown = useCallback((articleList: Article[]) => {
+    if (!enableDeduplication) return
+    
+    const newIds = new Set(shownArticleIds)
+    articleList.forEach(article => newIds.add(article.id))
+    setShownArticleIds(newIds)
+    saveShownArticles(newIds)
+  }, [shownArticleIds, saveShownArticles, enableDeduplication])
 
   // Track scroll position to determine if user is at top
   useEffect(() => {
@@ -71,9 +113,14 @@ export const useAutoRefresh = ({
         return
       }
 
-      const newArticles = data?.articles || []
+      let newArticles = data?.articles || []
+      
+      // Filter out already shown articles
+      newArticles = filterNewArticles(newArticles)
       
       if (newArticles.length > 0) {
+        // Mark new articles as shown
+        markArticlesAsShown(newArticles)
         // If newest published article is too old, use DB latest instead
         const newestPub = newArticles
           .map((a: any) => a.published_at || a.created_at)
@@ -213,8 +260,14 @@ export const useAutoRefresh = ({
         return
       }
 
-      const initialArticles = data?.articles || []
+      let initialArticles = data?.articles || []
+      
+      // Filter out already shown articles
+      initialArticles = filterNewArticles(initialArticles)
+      
       if (initialArticles.length > 0) {
+        // Mark initial articles as shown
+        markArticlesAsShown(initialArticles)
         // If newest published article is too old, fall back to DB latest
         const newestPub = initialArticles
           .map((a: any) => a.published_at || a.created_at)
@@ -296,6 +349,50 @@ export const useAutoRefresh = ({
     )
   }, [])
 
+  // Load more articles (for infinite scroll)
+  const loadMoreArticles = useCallback(async () => {
+    if (loadingMore || !hasMore) return
+    
+    try {
+      setLoadingMore(true)
+      
+      // Get more articles excluding already shown ones
+      const { data, error } = await supabase
+        .from('articles')
+        .select('*')
+        .not('id', 'in', `(${[...shownArticleIds].join(',') || 'null'})`)
+        .gte('published_at', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString())
+        .order('published_at', { ascending: false })
+        .limit(20)
+      
+      if (error) {
+        console.error('Error loading more articles:', error)
+        return
+      }
+      
+      const moreArticles = (data || []).map(a => ({ 
+        ...a, 
+        recommendation_score: a.engagement_score || Math.random() * 100 
+      }))
+      
+      if (moreArticles.length === 0) {
+        setHasMore(false)
+        return
+      }
+      
+      // Mark new articles as shown
+      markArticlesAsShown(moreArticles)
+      
+      // Append to existing articles
+      setArticles(prev => [...prev, ...moreArticles])
+      
+    } catch (error) {
+      console.error('Error in loadMoreArticles:', error)
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [loadingMore, hasMore, shownArticleIds, markArticlesAsShown])
+
   // Load initial articles on mount with retry mechanism
   useEffect(() => {
     let retryCount = 0
@@ -323,12 +420,16 @@ export const useAutoRefresh = ({
     pendingArticles,
     pendingCount: pendingArticles.length,
     loading,
+    loadingMore,
+    hasMore,
     nextRefresh,
     formatCountdown,
     isAtTop,
     fetchNewArticles,
     manualRefresh,
     applyPendingArticles,
-    updateArticleLocally
+    updateArticleLocally,
+    loadMoreArticles,
+    shownArticleCount: shownArticleIds.size
   }
 }

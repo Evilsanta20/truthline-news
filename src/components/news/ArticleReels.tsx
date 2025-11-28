@@ -33,6 +33,8 @@ export default function ArticleReels({ userId }: ArticleReelsProps) {
   const [touchStart, setTouchStart] = useState(0)
   const [touchEnd, setTouchEnd] = useState(0)
   const [imageError, setImageError] = useState<Set<string>>(new Set())
+  const [shownArticleIds, setShownArticleIds] = useState<Set<string>>(new Set())
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const reelsContainerRef = useRef<HTMLDivElement>(null)
   
   const {
@@ -42,20 +44,30 @@ export default function ArticleReels({ userId }: ArticleReelsProps) {
     refreshRecommendations
   } = usePersonalization(userId)
 
-  // Load bookmarks and likes from localStorage
+  // Load saved bookmarks, likes, and shown articles
   useEffect(() => {
-    const savedBookmarks = localStorage.getItem(`bookmarks_${userId}`)
-    const savedLikes = localStorage.getItem(`likes_${userId}`)
+    const savedBookmarks = localStorage.getItem(`reels_bookmarks_${userId}`)
+    const savedLikes = localStorage.getItem(`reels_likes_${userId}`)
+    const savedShown = localStorage.getItem(`reels_shown_${userId}`)
+    
     if (savedBookmarks) setBookmarks(new Set(JSON.parse(savedBookmarks)))
     if (savedLikes) setLikes(new Set(JSON.parse(savedLikes)))
+    if (savedShown) setShownArticleIds(new Set(JSON.parse(savedShown)))
   }, [userId])
 
-  // Track view when reel changes
+  // Track article view and mark as shown
   useEffect(() => {
     if (recommendations[currentIndex]) {
-      trackInteraction(recommendations[currentIndex].id, 'view')
+      const articleId = recommendations[currentIndex].id
+      trackInteraction(articleId, 'view')
+      
+      // Mark article as shown
+      const newShown = new Set(shownArticleIds)
+      newShown.add(articleId)
+      setShownArticleIds(newShown)
+      localStorage.setItem(`reels_shown_${userId}`, JSON.stringify([...newShown]))
     }
-  }, [currentIndex, recommendations, trackInteraction])
+  }, [currentIndex, recommendations, trackInteraction, userId, shownArticleIds])
 
   // Keyboard navigation
   useEffect(() => {
@@ -102,8 +114,29 @@ export default function ArticleReels({ userId }: ArticleReelsProps) {
   const nextReel = useCallback(() => {
     if (currentIndex < recommendations.length - 1) {
       setCurrentIndex(prev => prev + 1)
+    } else {
+      // Load more articles when reaching the end
+      loadMoreArticles()
     }
   }, [currentIndex, recommendations.length])
+
+  const loadMoreArticles = async () => {
+    if (isLoadingMore) return
+    
+    try {
+      setIsLoadingMore(true)
+      
+      // Trigger a fresh recommendations refresh
+      await refreshRecommendations()
+      toast({ title: "More articles loaded" })
+      
+    } catch (error) {
+      console.error('Error loading more articles:', error)
+      toast({ title: "Failed to load more articles", variant: "destructive" })
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }
 
   const previousReel = useCallback(() => {
     if (currentIndex > 0) {
@@ -371,6 +404,7 @@ export default function ArticleReels({ userId }: ArticleReelsProps) {
       {/* Article Counter */}
       <div className="absolute left-4 bottom-4 z-20 text-white text-sm bg-black/40 px-4 py-2 rounded-full backdrop-blur-md font-medium">
         {currentIndex + 1} / {recommendations.length}
+        {isLoadingMore && <span className="ml-2">Loading...</span>}
       </div>
 
       {/* Swipe Hint (shows briefly) */}
