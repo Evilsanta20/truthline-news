@@ -5,6 +5,7 @@ import ArticleReels from '@/components/news/ArticleReels'
 import MoodInput from '@/components/mood/MoodInput'
 import MoodBasedFeed from '@/components/mood/MoodBasedFeed'
 import BreakingNews from '@/components/news/BreakingNews'
+import DailyDigest from '@/components/news/DailyDigest'
 import { useMoodPersonalization } from '@/hooks/useMoodPersonalization'
 import type { MoodData } from '@/components/mood/MoodInput'
 import { Button } from '@/components/ui/button'
@@ -29,7 +30,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 
-type ViewMode = 'feed' | 'reels' | 'mood' | 'categories';
+type ViewMode = 'feed' | 'reels' | 'mood' | 'categories' | 'digest';
 
 export default function ViewerPage() {
   const [userId, setUserId] = useState<string>('')
@@ -86,6 +87,7 @@ export default function ViewerPage() {
   const navItems = [
     { id: 'home', label: 'Home', icon: Home },
     { id: 'trending', label: 'Trending', icon: TrendingUp },
+    { id: 'digest', label: 'Daily Digest', icon: Sparkles },
     { id: 'bookmarks', label: 'Bookmarks', icon: Bookmark },
     { id: 'categories', label: 'Categories', icon: Globe },
   ]
@@ -175,7 +177,14 @@ export default function ViewerPage() {
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setActiveSection(item.id)}
+                    onClick={() => {
+                      setActiveSection(item.id)
+                      if (item.id === 'digest') {
+                        setViewMode('digest')
+                      } else if (item.id === 'home') {
+                        setViewMode('feed')
+                      }
+                    }}
                     className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-secondary ${
                       activeSection === item.id
                         ? 'bg-primary text-primary-foreground'
@@ -316,6 +325,11 @@ export default function ViewerPage() {
                       onClick={() => {
                         setActiveSection(item.id)
                         setIsMobileMenuOpen(false)
+                        if (item.id === 'digest') {
+                          setViewMode('digest')
+                        } else if (item.id === 'home') {
+                          setViewMode('feed')
+                        }
                       }}
                       className={`flex items-center space-x-3 w-full px-3 py-2 rounded-lg transition-all duration-200 ${
                         activeSection === item.id
@@ -385,7 +399,11 @@ export default function ViewerPage() {
       </header>
 
       {/* Content Based on View Mode */}
-      {viewMode === 'categories' ? (
+      {viewMode === 'digest' ? (
+        <div className="max-w-7xl mx-auto p-6">
+          <DailyDigest userId={userId} />
+        </div>
+      ) : viewMode === 'categories' ? (
         <div>
           {/* Breaking News Banner at Top */}
           <div className="bg-background border-b border-border">
