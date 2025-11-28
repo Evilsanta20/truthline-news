@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Shield, Users, FileText, Eye, Trash2, CheckCircle, XCircle, TrendingUp, Star } from 'lucide-react'
+import { Shield, Users, FileText, Eye, Trash2, CheckCircle, XCircle, TrendingUp, Star, Tag } from 'lucide-react'
+import { CategoryManagement } from '@/components/admin/CategoryManagement'
 
 export default function AdminPage() {
   const { toast } = useToast()
@@ -234,6 +235,10 @@ export default function AdminPage() {
               <FileText className="w-4 h-4 mr-2" />
               Article Management
             </TabsTrigger>
+            <TabsTrigger value="categories" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+              <Tag className="w-4 h-4 mr-2" />
+              Categories
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="articles">
@@ -337,6 +342,10 @@ export default function AdminPage() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="categories">
+            <CategoryManagement />
           </TabsContent>
         </Tabs>
       </div>
