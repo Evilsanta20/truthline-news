@@ -7,8 +7,9 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Shield, Users, FileText, Eye, Trash2, CheckCircle, XCircle, TrendingUp, Star, Tag } from 'lucide-react'
+import { Shield, Users, FileText, Eye, Trash2, CheckCircle, XCircle, TrendingUp, Star, Tag, Plus, Edit } from 'lucide-react'
 import { CategoryManagement } from '@/components/admin/CategoryManagement'
+import { ArticleEditor } from '@/components/admin/ArticleEditor'
 
 export default function AdminPage() {
   const { toast } = useToast()
@@ -20,6 +21,8 @@ export default function AdminPage() {
     editorsPickArticles: 0,
     totalViews: 0
   })
+  const [editorOpen, setEditorOpen] = useState(false)
+  const [selectedArticle, setSelectedArticle] = useState<any>(null)
 
   useEffect(() => {
     fetchArticles()
@@ -129,6 +132,21 @@ export default function AdminPage() {
         variant: "destructive"
       })
     }
+  }
+
+  const openCreateArticle = () => {
+    setSelectedArticle(null)
+    setEditorOpen(true)
+  }
+
+  const openEditArticle = (article: any) => {
+    setSelectedArticle(article)
+    setEditorOpen(true)
+  }
+
+  const handleEditorSuccess = () => {
+    fetchArticles()
+    fetchStats()
   }
 
   return (
@@ -244,10 +262,18 @@ export default function AdminPage() {
           <TabsContent value="articles">
             <Card className="border-gray-200">
               <CardHeader>
-                <CardTitle className="text-black">Article Management</CardTitle>
-                <CardDescription className="text-gray-600">
-                  Review and manage all articles on the platform
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-black">Article Management</CardTitle>
+                    <CardDescription className="text-gray-600">
+                      Review and manage all articles on the platform
+                    </CardDescription>
+                  </div>
+                  <Button onClick={openCreateArticle} className="bg-blue-600 hover:bg-blue-700">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Article
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
@@ -300,6 +326,15 @@ export default function AdminPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
+                                onClick={() => openEditArticle(article)}
+                                className="border-blue-600 text-blue-600 hover:bg-blue-50"
+                                title="Edit Article"
+                              >
+                                <Edit className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={() => toggleArticleFeature(article.id, 'is_featured', article.is_featured)}
                                 className={article.is_featured ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-gray-300 text-gray-600'}
                                 title="Toggle Featured"
@@ -349,6 +384,13 @@ export default function AdminPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <ArticleEditor
+        article={selectedArticle}
+        open={editorOpen}
+        onOpenChange={setEditorOpen}
+        onSuccess={handleEditorSuccess}
+      />
     </div>
   )
 }
