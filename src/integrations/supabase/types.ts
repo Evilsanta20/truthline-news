@@ -806,11 +806,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      archive_and_cleanup_old_articles: { Args: never; Returns: number }
       calculate_content_hash: {
         Args: { content_text: string; title_text: string; url_text: string }
         Returns: string
       }
       cleanup_duplicate_articles: { Args: never; Returns: number }
+      cleanup_old_articles: { Args: never; Returns: number }
       cleanup_old_logs: { Args: never; Returns: undefined }
       complete_sync_operation: {
         Args: {
