@@ -18,6 +18,7 @@ interface Category {
   description: string | null
   color: string | null
   created_at: string
+  articleCount?: number
 }
 
 export function CategoryManagement() {
@@ -48,7 +49,20 @@ export function CategoryManagement() {
         .order('name')
 
       if (error) throw error
-      setCategories(data || [])
+      
+      // Get article count for each category
+      const categoriesWithCounts = await Promise.all(
+        (data || []).map(async (category) => {
+          const { count } = await supabase
+            .from('articles')
+            .select('*', { count: 'exact', head: true })
+            .eq('category_id', category.id)
+          
+          return { ...category, articleCount: count || 0 }
+        })
+      )
+      
+      setCategories(categoriesWithCounts)
     } catch (error: any) {
       toast({
         title: "Error",
@@ -129,6 +143,23 @@ export function CategoryManagement() {
     if (!categoryToDelete) return
 
     try {
+      // Check if category has articles
+      const { count } = await supabase
+        .from('articles')
+        .select('*', { count: 'exact', head: true })
+        .eq('category_id', categoryToDelete)
+
+      if (count && count > 0) {
+        toast({
+          title: "Cannot delete category",
+          description: `This category has ${count} article(s). Please reassign or delete the articles first.`,
+          variant: "destructive"
+        })
+        setDeleteDialogOpen(false)
+        setCategoryToDelete(null)
+        return
+      }
+
       const { error } = await supabase
         .from('categories')
         .delete()
@@ -302,6 +333,7 @@ export function CategoryManagement() {
                 <TableHead className="text-black">Color</TableHead>
                 <TableHead className="text-black">Name</TableHead>
                 <TableHead className="text-black">Slug</TableHead>
+                <TableHead className="text-black">Articles</TableHead>
                 <TableHead className="text-black">Description</TableHead>
                 <TableHead className="text-black">Created</TableHead>
                 <TableHead className="text-black text-right">Actions</TableHead>
@@ -310,7 +342,7 @@ export function CategoryManagement() {
             <TableBody>
               {categories.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-gray-500 py-8">
+                  <TableCell colSpan={7} className="text-center text-gray-500 py-8">
                     No categories found. Create your first category to get started.
                   </TableCell>
                 </TableRow>
@@ -329,6 +361,11 @@ export function CategoryManagement() {
                     </TableCell>
                     <TableCell className="text-gray-600 font-mono text-sm">
                       {category.slug}
+                    </TableCell>
+                    <TableCell className="text-gray-600">
+                      <span className={category.articleCount === 0 ? 'text-orange-600 font-medium' : ''}>
+                        {category.articleCount || 0}
+                      </span>
                     </TableCell>
                     <TableCell className="text-gray-600 max-w-xs">
                       <div className="truncate" title={category.description || ''}>
@@ -356,6 +393,8 @@ export function CategoryManagement() {
                             setDeleteDialogOpen(true)
                           }}
                           className="border-red-600 text-red-600 hover:bg-red-50"
+                          disabled={category.articleCount && category.articleCount > 0}
+                          title={category.articleCount && category.articleCount > 0 ? 'Cannot delete category with articles' : 'Delete category'}
                         >
                           <Trash2 className="w-3 h-3" />
                         </Button>
@@ -372,9 +411,9 @@ export function CategoryManagement() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent className="bg-white">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-black">Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle className="text-black">Delete Category</AlertDialogTitle>
             <AlertDialogDescription className="text-gray-600">
-              This will permanently delete this category. Articles in this category will not be deleted but will lose their category assignment.
+              This will permanently delete this category. Only categories with 0 articles can be deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -103,18 +103,34 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
     }
   })
 
-  // Load categories from database
+  // Load categories from database - only show categories with articles
   useEffect(() => {
     const loadCategories = async () => {
-      const { data } = await supabase
+      // Get categories with article counts
+      const { data: categoriesData } = await supabase
         .from('categories')
-        .select('slug, name, color')
+        .select('id, slug, name, color')
         .order('name')
       
-      if (data) {
+      if (categoriesData) {
+        // Count articles for each category
+        const categoriesWithCounts = await Promise.all(
+          categoriesData.map(async (cat) => {
+            const { count } = await supabase
+              .from('articles')
+              .select('*', { count: 'exact', head: true })
+              .eq('category_id', cat.id)
+            
+            return { ...cat, articleCount: count || 0 }
+          })
+        )
+        
+        // Only include categories that have articles
+        const nonEmptyCategories = categoriesWithCounts.filter(cat => cat.articleCount > 0)
+        
         setCategories([
           { slug: 'all', name: 'All Categories', color: '#3B82F6' },
-          ...data
+          ...nonEmptyCategories
         ])
       }
     }
