@@ -246,64 +246,6 @@ export default function ViewerPage() {
             </div>
           </div>
 
-          {/* View Mode Toggle - Always Visible on All Screens */}
-          <div className="border-t border-border bg-secondary/50">
-            <div className="max-w-7xl mx-auto px-4">
-              <div className="flex items-center justify-center gap-1 py-2">
-                <Button
-                  variant={currentViewMode === 'categories' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('categories')}
-                  className="h-9 flex-1 sm:flex-none transition-all"
-                >
-                  <List className="w-4 h-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Categories</span>
-                </Button>
-                <Button
-                  variant={currentViewMode === 'feed' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('feed')}
-                  className="h-9 flex-1 sm:flex-none transition-all"
-                >
-                  <Grid3X3 className="w-4 h-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Feed</span>
-                </Button>
-                <Button
-                  variant={currentViewMode === 'mood' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => {
-                    if (currentMood) {
-                      setViewMode('mood')
-                    } else {
-                      setShowMoodInput(true)
-                    }
-                  }}
-                  className="h-9 flex-1 sm:flex-none transition-all relative"
-                >
-                  <Heart className="w-4 h-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Mood</span>
-                  {currentMood && (
-                    <Badge variant="secondary" className="ml-1 h-4 px-1 text-xs hidden sm:inline-flex">
-                      Active
-                    </Badge>
-                  )}
-                </Button>
-                <Button
-                  variant={currentViewMode === 'reels' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('reels')}
-                  className="h-9 flex-1 sm:flex-none transition-all relative"
-                >
-                  <Play className="w-4 h-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Reels</span>
-                  <Badge variant="secondary" className="ml-1 h-4 px-1 text-xs hidden sm:inline-flex">
-                    New
-                  </Badge>
-                </Button>
-              </div>
-            </div>
-          </div>
-
           {/* Mobile Navigation */}
           {isMobileMenuOpen && (
             <div className="lg:hidden border-t border-border bg-background/95 backdrop-blur-sm">
