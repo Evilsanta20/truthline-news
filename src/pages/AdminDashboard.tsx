@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
-import { Shield, Users, FileText, Eye, Edit, Trash2, CheckCircle, XCircle } from 'lucide-react'
+import { Shield, Users, FileText, Eye, Edit, Trash2, CheckCircle, XCircle, ShieldCheck } from 'lucide-react'
 import { Navigate } from 'react-router-dom'
 
 export default function AdminDashboard() {
@@ -34,6 +34,62 @@ export default function AdminDashboard() {
       fetchUsers()
       fetchArticles()
       fetchStats()
+      
+      // Real-time subscription for users
+      const usersChannel = supabase
+        .channel('admin-users-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'profiles'
+          },
+          () => {
+            fetchUsers()
+            fetchStats()
+          }
+        )
+        .subscribe()
+
+      // Real-time subscription for articles
+      const articlesChannel = supabase
+        .channel('admin-articles-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'articles'
+          },
+          () => {
+            fetchArticles()
+            fetchStats()
+          }
+        )
+        .subscribe()
+
+      // Real-time subscription for user roles
+      const rolesChannel = supabase
+        .channel('admin-roles-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'user_roles'
+          },
+          () => {
+            fetchUsers()
+          }
+        )
+        .subscribe()
+
+      return () => {
+        supabase.removeChannel(usersChannel)
+        supabase.removeChannel(articlesChannel)
+        supabase.removeChannel(rolesChannel)
+      }
     }
   }, [user, profile])
 
@@ -114,6 +170,30 @@ export default function AdminDashboard() {
         description: "User role updated successfully"
       })
       fetchUsers()
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      })
+    }
+  }
+
+  const toggleVerification = async (articleId: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('articles')
+        .update({ is_verified: !currentStatus })
+        .eq('id', articleId)
+
+      if (error) throw error
+
+      toast({
+        title: "Success",
+        description: `Article ${!currentStatus ? 'verified' : 'unverified'} successfully`
+      })
+      
+      fetchArticles()
     } catch (error: any) {
       toast({
         title: "Error",
@@ -339,6 +419,7 @@ export default function AdminDashboard() {
                       <TableHead>Title</TableHead>
                       <TableHead>Author</TableHead>
                       <TableHead>Category</TableHead>
+                      <TableHead>Verification</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Views</TableHead>
                       <TableHead>Created</TableHead>
@@ -351,7 +432,19 @@ export default function AdminDashboard() {
                         <TableCell className="font-medium max-w-xs truncate">{article.title}</TableCell>
                         <TableCell>{article.profiles?.full_name || 'Unknown'}</TableCell>
                         <TableCell>
-                          <Badge variant="outline">{article.categories?.name}</Badge>
+                          <Badge variant="outline">{article.categories?.name || 'Uncategorized'}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          {article.is_verified ? (
+                            <Badge className="bg-green-600 text-white text-xs">
+                              <ShieldCheck className="w-3 h-3 mr-1" />
+                              Verified
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="border-orange-500 text-orange-700 text-xs">
+                              Not Verified
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Badge variant={article.is_featured ? "default" : "secondary"}>
@@ -362,6 +455,14 @@ export default function AdminDashboard() {
                         <TableCell>{new Date(article.created_at).toLocaleDateString()}</TableCell>
                         <TableCell>
                           <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => toggleVerification(article.id, article.is_verified)}
+                              title="Toggle Verification"
+                            >
+                              <ShieldCheck className="w-4 h-4" />
+                            </Button>
                             <Button
                               variant="outline"
                               size="sm"
