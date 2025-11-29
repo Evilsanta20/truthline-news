@@ -14,9 +14,9 @@ serve(async (req) => {
   try {
     const { userId, articleIds } = await req.json();
 
-    if (!userId || !articleIds || articleIds.length === 0) {
+    if (!userId) {
       return new Response(
-        JSON.stringify({ error: 'userId and articleIds are required' }),
+        JSON.stringify({ error: 'userId is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -26,12 +26,52 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // If no articleIds provided, fetch from interactions
+    let finalArticleIds = articleIds;
+    if (!articleIds || articleIds.length === 0) {
+      console.log('No articleIds provided, fetching from interactions...');
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      const { data: interactions, error: interactionsError } = await supabase
+        .from('article_interactions')
+        .select('article_id')
+        .eq('user_id', userId)
+        .gte('created_at', todayStart.toISOString())
+        .order('created_at', { ascending: false })
+        .limit(30);
+
+      if (interactionsError) {
+        console.error('Error fetching interactions:', interactionsError);
+      } else {
+        finalArticleIds = [...new Set(interactions?.map((i: any) => i.article_id) || [])];
+        console.log(`Found ${finalArticleIds.length} interactions for user ${userId}`);
+      }
+    }
+
+    if (!finalArticleIds || finalArticleIds.length === 0) {
+      console.log('No articles to process for digest');
+      return new Response(
+        JSON.stringify({ 
+          summary: "You haven't read any articles today yet. Start exploring to see your daily digest!",
+          highlights: ["Try browsing the news feed to discover interesting stories", "Bookmark articles you want to read later", "Check back here to see your personalized digest"],
+          topics: [],
+          sources: [],
+          articleCount: 0,
+          generatedAt: new Date().toISOString()
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Fetch the articles
+    console.log(`Fetching ${finalArticleIds.length} articles...`);
     const { data: articles, error: articlesError } = await supabase
       .from('articles')
-      .select('id, title, description, source_name, topic_tags, published_at')
-      .in('id', articleIds)
-      .limit(20); // Limit to last 20 articles
+      .select('id, title, description, source_name, topic_tags, published_at, content')
+      .in('id', finalArticleIds)
+      .order('published_at', { ascending: false })
+      .limit(20);
 
     if (articlesError) {
       console.error('Error fetching articles:', articlesError);
@@ -42,22 +82,32 @@ serve(async (req) => {
     }
 
     if (!articles || articles.length === 0) {
+      console.log('No articles found in database');
       return new Response(
         JSON.stringify({ 
-          summary: 'No articles read today yet. Start reading to see your daily digest!',
-          highlights: [],
+          summary: "No articles available for your digest. Articles may have expired or been removed.",
+          highlights: ["Try reading some new articles", "Your digest will update automatically as you read"],
           topics: [],
           sources: [],
-          articleCount: 0
+          articleCount: 0,
+          generatedAt: new Date().toISOString()
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Prepare article data for AI
-    const articleSummaries = articles.map(a => 
-      `- "${a.title}" from ${a.source_name} (Topics: ${(a.topic_tags || []).join(', ')}): ${a.description || 'No description'}`
-    ).join('\n');
+    console.log(`Processing ${articles.length} articles for digest`);
+
+    // Prepare article data for AI with more detail
+    const articleSummaries = articles.map((a: any) => {
+      const content = a.content ? a.content.substring(0, 300) : (a.description || '');
+      return `Title: "${a.title}"
+Source: ${a.source_name}
+Topics: ${(a.topic_tags || []).join(', ')}
+Summary: ${content}
+Published: ${new Date(a.published_at).toLocaleDateString()}
+---`;
+    }).join('\n\n');
 
     // Call Lovable AI to generate digest
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -79,17 +129,18 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a news digest assistant. Create a concise, engaging daily digest summary from the articles the user has read. Focus on:
-1. Main themes and trending topics
-2. Key highlights and important facts
-3. Diverse perspectives if present
-4. Notable sources
+            content: `You are an expert news curator creating personalized daily digests. Your digests should be:
+- Engaging and conversational
+- Focus on connecting themes across articles
+- Highlight the most important facts and developments
+- Provide context and insights
+- Be concise but informative (150-200 words)
 
-Keep the summary under 200 words and make it engaging and informative.`
+Create a digest that feels like a smart friend catching you up on what matters.`
           },
           {
             role: 'user',
-            content: `Generate a daily digest summary for these ${articles.length} articles I read today:\n\n${articleSummaries}`
+            content: `Create my daily news digest from these ${articles.length} articles I've engaged with today. Find connections, highlight what's important, and give me the key takeaways:\n\n${articleSummaries}`
           }
         ],
         tools: [
@@ -103,17 +154,21 @@ Keep the summary under 200 words and make it engaging and informative.`
                 properties: {
                   summary: {
                     type: 'string',
-                    description: 'A concise 2-3 sentence overview of the main themes'
+                    description: 'An engaging 2-3 paragraph summary (150-200 words) that connects themes and highlights what matters most. Make it conversational and insightful.'
                   },
                   highlights: {
                     type: 'array',
-                    description: 'Array of 3-5 key highlights or facts from the articles',
-                    items: { type: 'string' }
+                    description: 'Array of 4-6 specific, actionable key highlights or important facts. Each should be a complete, clear statement.',
+                    items: { type: 'string' },
+                    minItems: 4,
+                    maxItems: 6
                   },
                   mainTopics: {
                     type: 'array',
-                    description: 'Array of 3-5 main topics covered',
-                    items: { type: 'string' }
+                    description: 'Array of 3-5 main topics or themes (not just keywords, but meaningful topics like "Climate Policy Changes" not just "Climate")',
+                    items: { type: 'string' },
+                    minItems: 3,
+                    maxItems: 5
                   }
                 },
                 required: ['summary', 'highlights', 'mainTopics'],

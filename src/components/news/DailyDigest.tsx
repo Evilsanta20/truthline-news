@@ -39,45 +39,30 @@ export default function DailyDigest({ userId, className }: DailyDigestProps) {
       setLoading(true)
       setError(null)
 
-      // Get today's read articles from localStorage
-      const today = new Date().toDateString()
-      const readToday: string[] = []
-      
-      // Check interaction history from localStorage
-      const shownArticles = localStorage.getItem(`reels_shown_${userId}`)
-      const feedShown = localStorage.getItem(`shown_articles_${userId}`)
-      
-      if (shownArticles) {
-        const shown = JSON.parse(shownArticles)
-        readToday.push(...shown)
-      }
-      
-      if (feedShown) {
-        const shown = JSON.parse(feedShown)
-        readToday.push(...shown)
+      // Get today's interactions from the database
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+
+      const { data: interactions, error: interactionsError } = await supabase
+        .from('article_interactions')
+        .select('article_id')
+        .eq('user_id', userId)
+        .gte('created_at', todayStart.toISOString())
+        .order('created_at', { ascending: false })
+
+      if (interactionsError) {
+        console.error('Error fetching interactions:', interactionsError)
+        throw new Error('Failed to fetch your reading history')
       }
 
-      // Remove duplicates
-      const uniqueArticleIds = [...new Set(readToday)]
+      // Get unique article IDs
+      const articleIds = [...new Set(interactions?.map(i => i.article_id) || [])]
 
-      if (uniqueArticleIds.length === 0) {
-        setDigest({
-          summary: "You haven't read any articles today yet. Start exploring to build your daily digest!",
-          highlights: [],
-          topics: [],
-          sources: [],
-          articleCount: 0,
-          generatedAt: new Date().toISOString()
-        })
-        setLoading(false)
-        return
-      }
-
-      // Call edge function to generate digest
+      // Call edge function to generate digest (it will handle empty articleIds)
       const { data, error: functionError } = await supabase.functions.invoke('generate-daily-digest', {
         body: { 
           userId,
-          articleIds: uniqueArticleIds.slice(-20) // Last 20 articles
+          articleIds: articleIds.slice(0, 30) // Last 30 interactions
         }
       })
 
