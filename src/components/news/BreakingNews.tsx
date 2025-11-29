@@ -38,16 +38,17 @@ export default function BreakingNews({ className }: BreakingNewsProps) {
     try {
       if (showToast) {
         setIsRefreshing(true)
-        // When user manually refreshes, fetch new articles from APIs first
-        toast.info('Fetching latest breaking news from sources...')
+        setArticles([]) // Clear immediately
+        toast.info('Fetching breaking news...')
         
-        await supabase.functions.invoke('enhanced-news-aggregator', {
+        // Fetch new articles from API
+        supabase.functions.invoke('enhanced-news-aggregator', {
           body: { 
             category: 'general',
             limit: 30,
             forceRefresh: true
           }
-        })
+        }) // Don't wait for this, continue loading
       }
       
       const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
@@ -79,7 +80,7 @@ export default function BreakingNews({ className }: BreakingNewsProps) {
       setArticles(data || [])
       
       if (showToast) {
-        toast.success(`Breaking news refreshed! ${data?.length || 0} stories loaded`)
+        toast.success(`${data?.length || 0} stories loaded`)
       }
     } catch (error) {
       console.error('Error fetching breaking news:', error)
