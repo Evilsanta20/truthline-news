@@ -48,7 +48,7 @@ export const RefreshButton: React.FC<RefreshButtonProps> = ({
       
       // Call purge-and-fetch-latest to wipe old news and get fresh ones
       const { data, error } = await supabase.functions.invoke('purge-and-fetch-latest', {
-        body: { wipe_all: false, max_age_hours: 24 }
+        body: { wipe_all: false, max_age_hours: 3 }
       })
       
       if (error) throw error
