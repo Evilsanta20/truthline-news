@@ -410,6 +410,15 @@ export default function ViewerPage() {
         )}
       </header>
 
+      {/* Daily Digest Bar - Shown on all views except digest mode */}
+      {viewMode !== 'digest' && (
+        <div className="bg-background border-b border-border">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+            <DailyDigest userId={userId} />
+          </div>
+        </div>
+      )}
+
       {/* Content Based on View Mode */}
       {viewMode === 'digest' ? (
         <div className="max-w-7xl mx-auto p-6">
