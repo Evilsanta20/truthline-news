@@ -422,24 +422,43 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
                 try {
                   setGeneratingArticles(true)
                   
-                  const result = await supabase.functions.invoke('enhanced-news-aggregator', {
-                    body: { 
-                      category: 'general',
-                      limit: 80,
-                      forceRefresh: true
+                  // Fetch from multiple categories for better coverage
+                  const categories = ['general', 'technology', 'business', 'health', 'sports']
+                  let totalArticles = 0
+                  
+                  for (const category of categories) {
+                    const result = await supabase.functions.invoke('enhanced-news-aggregator', {
+                      body: { 
+                        category,
+                        limit: 20,
+                        forceRefresh: true
+                      }
+                    })
+                    
+                    if (!result.error) {
+                      totalArticles += (result.data?.total_articles || result.data?.inserted || 0)
                     }
-                  })
+                  }
                   
-                  if (result.error) throw new Error(result.error.message || 'Failed to generate fresh news')
+                  if (totalArticles === 0) {
+                    throw new Error('No new articles fetched from news APIs')
+                  }
                   
+                  // Refresh the feed after fetching
                   manualRefresh()
                   
                   return {
                     success: true,
-                    articles_processed: result.data?.total_articles || result.data?.inserted || 0,
-                    categories: ['general']
+                    articles_processed: totalArticles,
+                    categories
                   }
-                } catch (error) {
+                } catch (error: any) {
+                  console.error('Generate fresh error:', error)
+                  toast({
+                    title: 'Failed to fetch news',
+                    description: error.message,
+                    variant: 'destructive'
+                  })
                   return { success: false, articles_processed: 0, categories: [] }
                 } finally {
                   setGeneratingArticles(false)

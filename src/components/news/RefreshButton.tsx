@@ -25,33 +25,36 @@ export const RefreshButton: React.FC<RefreshButtonProps> = ({
     try {
       toast.info('🚀 Fetching latest news from all sources...')
       
-      // Generate fresh news first
+      // Generate fresh news from APIs first
       const result = await onGenerateFresh()
       
-      if (result.success) {
+      if (result.success && result.articles_processed > 0) {
         // Then refresh the feed to show the new articles
         await onRefresh()
-        toast.success(`✅ Loaded ${result.articles_processed} fresh articles!`)
+        toast.success(`✅ Loaded ${result.articles_processed} fresh articles from news APIs!`)
       } else {
-        toast.error('Failed to fetch fresh news')
+        toast.error('No new articles available. Try Full Refresh to clear old news.')
       }
     } catch (error: any) {
       console.error('Refresh failed:', error)
-      toast.error(`Failed to refresh: ${error.message}`)
+      toast.error(`Failed to fetch news: ${error.message}`)
     }
   }
 
   const handleFullRefresh = async () => {
     try {
       setIsPurging(true)
-      toast.info('🔄 Purging old news and fetching completely fresh articles...')
+      toast.info('🔄 Purging old news and fetching completely fresh articles from APIs...')
       
-      // Call purge-and-fetch-latest to wipe old news and get fresh ones
+      // Call purge-and-fetch-latest to wipe old news and get fresh ones from external APIs
       const { data, error } = await supabase.functions.invoke('purge-and-fetch-latest', {
         body: { wipe_all: false, max_age_hours: 3 }
       })
       
-      if (error) throw error
+      if (error) {
+        console.error('Purge error:', error)
+        throw new Error(error.message || 'Failed to purge and fetch news')
+      }
       
       // Clear local storage of shown articles
       if (userId) {
@@ -59,13 +62,16 @@ export const RefreshButton: React.FC<RefreshButtonProps> = ({
         localStorage.removeItem(`reels_shown_${userId}`)
       }
       
-      toast.success(`✅ Purged ${data.removed} old articles, added ${data.articles_added} fresh ones!`)
+      const removed = data?.removed || 0
+      const added = data?.articles_added || 0
       
-      // Refresh the feed
+      toast.success(`✅ Purged ${removed} old articles, fetched ${added} fresh ones from news APIs!`)
+      
+      // Refresh the feed to show new articles
       await onRefresh()
     } catch (error: any) {
       console.error('Full refresh failed:', error)
-      toast.error(`Failed to refresh: ${error.message}`)
+      toast.error(`Full refresh failed: ${error.message}`)
     } finally {
       setIsPurging(false)
     }
