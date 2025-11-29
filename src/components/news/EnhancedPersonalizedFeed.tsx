@@ -447,6 +447,7 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
               }}
               loading={loading || generatingArticles}
               className="flex-wrap"
+              userId={userId}
             />
           </div>
         </div>
