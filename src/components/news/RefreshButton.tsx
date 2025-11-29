@@ -23,55 +23,62 @@ export const RefreshButton: React.FC<RefreshButtonProps> = ({
 
   const handleRefreshAndGenerate = async () => {
     try {
-      toast.info('🚀 Fetching latest news from all sources...')
+      // Clear local cache immediately
+      if (userId) {
+        localStorage.removeItem(`shown_articles_${userId}`)
+        localStorage.removeItem(`reels_shown_${userId}`)
+      }
       
-      // Generate fresh news from APIs first
-      const result = await onGenerateFresh()
+      toast.info('🚀 Fetching latest news...')
+      
+      // Fetch and refresh in parallel for speed
+      const [result] = await Promise.all([
+        onGenerateFresh(),
+        onRefresh()
+      ])
       
       if (result.success && result.articles_processed > 0) {
-        // Then refresh the feed to show the new articles
-        await onRefresh()
-        toast.success(`✅ Loaded ${result.articles_processed} fresh articles from news APIs!`)
+        toast.success(`✅ ${result.articles_processed} fresh articles loaded!`)
       } else {
-        toast.error('No new articles available. Try Full Refresh to clear old news.')
+        toast.error('No new articles. Try Full Refresh.')
       }
     } catch (error: any) {
       console.error('Refresh failed:', error)
-      toast.error(`Failed to fetch news: ${error.message}`)
+      toast.error(`Failed: ${error.message}`)
     }
   }
 
   const handleFullRefresh = async () => {
     try {
       setIsPurging(true)
-      toast.info('🔄 Purging old news and fetching completely fresh articles from APIs...')
       
-      // Call purge-and-fetch-latest to wipe old news and get fresh ones from external APIs
-      const { data, error } = await supabase.functions.invoke('purge-and-fetch-latest', {
-        body: { wipe_all: false, max_age_hours: 3 }
-      })
-      
-      if (error) {
-        console.error('Purge error:', error)
-        throw new Error(error.message || 'Failed to purge and fetch news')
-      }
-      
-      // Clear local storage of shown articles
+      // Clear local cache IMMEDIATELY
       if (userId) {
         localStorage.removeItem(`shown_articles_${userId}`)
         localStorage.removeItem(`reels_shown_${userId}`)
       }
       
+      toast.info('🔄 Purging old news...')
+      
+      // Purge and fetch in one fast operation
+      const { data, error } = await supabase.functions.invoke('purge-and-fetch-latest', {
+        body: { wipe_all: false, max_age_hours: 3 }
+      })
+      
+      if (error) {
+        throw new Error(error.message || 'Purge failed')
+      }
+      
       const removed = data?.removed || 0
       const added = data?.articles_added || 0
       
-      toast.success(`✅ Purged ${removed} old articles, fetched ${added} fresh ones from news APIs!`)
+      // Refresh feed immediately
+      onRefresh()
       
-      // Refresh the feed to show new articles
-      await onRefresh()
+      toast.success(`✅ ${removed} old removed, ${added} fresh loaded!`)
     } catch (error: any) {
       console.error('Full refresh failed:', error)
-      toast.error(`Full refresh failed: ${error.message}`)
+      toast.error(`Failed: ${error.message}`)
     } finally {
       setIsPurging(false)
     }

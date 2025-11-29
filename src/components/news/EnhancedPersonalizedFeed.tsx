@@ -422,30 +422,31 @@ export default function EnhancedPersonalizedFeed({ userId }: EnhancedPersonalize
                 try {
                   setGeneratingArticles(true)
                   
-                  // Fetch from multiple categories for better coverage
-                  const categories = ['general', 'technology', 'business', 'health', 'sports']
-                  let totalArticles = 0
+                  // Fetch from multiple categories in parallel for speed
+                  const categories = ['general', 'technology', 'business']
                   
-                  for (const category of categories) {
-                    const result = await supabase.functions.invoke('enhanced-news-aggregator', {
-                      body: { 
-                        category,
-                        limit: 20,
-                        forceRefresh: true
-                      }
-                    })
-                    
+                  const results = await Promise.all(
+                    categories.map(category =>
+                      supabase.functions.invoke('enhanced-news-aggregator', {
+                        body: { 
+                          category,
+                          limit: 25,
+                          forceRefresh: true
+                        }
+                      })
+                    )
+                  )
+                  
+                  const totalArticles = results.reduce((sum, result) => {
                     if (!result.error) {
-                      totalArticles += (result.data?.total_articles || result.data?.inserted || 0)
+                      return sum + (result.data?.total_articles || result.data?.inserted || 0)
                     }
-                  }
+                    return sum
+                  }, 0)
                   
                   if (totalArticles === 0) {
-                    throw new Error('No new articles fetched from news APIs')
+                    throw new Error('No new articles available')
                   }
-                  
-                  // Refresh the feed after fetching
-                  manualRefresh()
                   
                   return {
                     success: true,
