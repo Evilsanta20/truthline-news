@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import EnhancedPersonalizedFeed from '@/components/news/EnhancedPersonalizedFeed'
 import CategorizedNewsFeed from '@/components/news/CategorizedNewsFeed'
-import ArticleReels from '@/components/news/ArticleReels'
 import MoodInput from '@/components/mood/MoodInput'
 import MoodBasedFeed from '@/components/mood/MoodBasedFeed'
 import BreakingNews from '@/components/news/BreakingNews'
@@ -103,9 +102,28 @@ export default function ViewerPage() {
     )
   }
 
-  // Render reels in full screen mode
+  // Render reels "Coming Soon" message
   if (viewMode === 'reels') {
-    return <ArticleReels userId={userId} />
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4 p-8">
+          <Play className="w-24 h-24 text-primary mx-auto opacity-50" />
+          <h2 className="text-4xl font-bold gradient-text">Coming Soon</h2>
+          <p className="text-lg text-muted-foreground max-w-md">
+            We're working on an amazing Reels experience. Stay tuned!
+          </p>
+          <Button
+            onClick={() => setViewMode('feed')}
+            variant="default"
+            size="lg"
+            className="mt-4"
+          >
+            <Home className="w-4 h-4 mr-2" />
+            Back to Feed
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   // Show mood input modal
@@ -306,7 +324,7 @@ export default function ViewerPage() {
                   <Play className="w-4 h-4 sm:mr-1" />
                   <span className="hidden sm:inline">Reels</span>
                   <Badge variant="secondary" className="ml-1 h-4 px-1 text-xs hidden sm:inline-flex">
-                    New
+                    Soon
                   </Badge>
                 </Button>
               </div>
@@ -367,7 +385,7 @@ export default function ViewerPage() {
           )}
         </div>
         
-        {/* Reels Feature Banner - Only show on feed view */}
+        {/* Reels Feature Banner - Coming Soon */}
         {viewMode === 'feed' && (
           <div className="bg-gradient-to-r from-primary/10 via-accent/10 to-secondary/10 border-b border-border">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
@@ -376,22 +394,16 @@ export default function ViewerPage() {
                   <Play className="w-5 h-5 text-primary" />
                   <div>
                     <p className="text-sm font-medium text-foreground">
-                      🔥 Try the new Reels experience!
+                      🚀 Reels Experience Coming Soon!
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Swipe through trending news in a TikTok-style format
+                      We're building an amazing TikTok-style news experience
                     </p>
                   </div>
                 </div>
-                <Button
-                  onClick={() => setViewMode('reels')}
-                  variant="default"
-                  size="sm"
-                  className="shadow-sm hover:shadow-md transition-shadow"
-                >
-                  <Play className="w-4 h-4 mr-2" />
-                  Try Reels
-                </Button>
+                <Badge variant="secondary" className="text-xs">
+                  Coming Soon
+                </Badge>
               </div>
             </div>
           </div>
