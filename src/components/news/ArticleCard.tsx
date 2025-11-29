@@ -22,6 +22,7 @@ interface Article {
   is_featured: boolean
   is_trending: boolean
   is_editors_pick: boolean
+  is_verified?: boolean
   view_count: number
   categories?: { name: string; slug: string; color: string }
   sources?: { name: string; url: string }
@@ -215,6 +216,11 @@ export const ArticleCard = ({ article, variant = 'default', onBookmarkChange }: 
               }}
             />
             <div className="absolute top-0 right-0 flex flex-col gap-1 p-2">
+              {!article.is_verified && (
+                <Badge className="bg-orange-500 text-white font-headline uppercase text-xs tracking-wider border-2 border-background">
+                  Not Verified
+                </Badge>
+              )}
               {article.is_featured && (
                 <Badge className="bg-primary text-primary-foreground font-headline uppercase text-xs tracking-wider border-2 border-background">
                   Featured
@@ -236,13 +242,18 @@ export const ArticleCard = ({ article, variant = 'default', onBookmarkChange }: 
         
         <div className="p-6">
           <div className="flex items-start justify-between mb-4 pb-3 border-b border-[hsl(var(--newspaper-border))]">
-            <div className="flex items-center gap-3 newspaper-byline">
+            <div className="flex items-center gap-3 newspaper-byline flex-wrap">
               {article.categories && (
                 <span className="category-pill">
                   {article.categories.name}
                 </span>
               )}
               <span className="font-semibold">{article.source_name}</span>
+              {!article.is_verified && (
+                <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-300">
+                  User Content
+                </Badge>
+              )}
             </div>
             <div className="flex items-center gap-1">
               <Button

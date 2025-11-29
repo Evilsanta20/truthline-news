@@ -31,6 +31,27 @@ export default function EditorPage() {
   useEffect(() => {
     fetchArticles()
     fetchCategories()
+    
+    // Real-time subscription for articles
+    const articlesChannel = supabase
+      .channel('editor-articles-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'articles',
+          filter: `source_name=eq.Editor`
+        },
+        () => {
+          fetchArticles()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(articlesChannel)
+    }
   }, [])
 
   const fetchArticles = async () => {
@@ -85,12 +106,14 @@ export default function EditorPage() {
         category_id: articleForm.category_id,
         url: articleForm.url || `#article-${Date.now()}`,
         source_name: 'Editor',
-        image_url: articleForm.image_url || null,
+        url_to_image: articleForm.image_url || null,
         is_featured: false,
         is_trending: false,
         is_editors_pick: true,
+        is_verified: false, // Editor content is not verified
         view_count: 0,
-        credibility_score: 9.0
+        credibility_score: 9.0,
+        published_at: new Date().toISOString()
       }
 
       let result
@@ -360,9 +383,12 @@ export default function EditorPage() {
                         <div className="flex-1">
                           <h3 className="text-lg font-semibold text-black mb-2">{article.title}</h3>
                           <p className="text-gray-600 text-sm mb-3 line-clamp-2">{article.description}</p>
-                          <div className="flex items-center gap-4 text-sm text-gray-500">
+                           <div className="flex items-center gap-4 text-sm text-gray-500">
                             <Badge variant="outline" className="border-blue-600 text-blue-600">
                               {article.categories?.name}
+                            </Badge>
+                            <Badge variant="secondary" className="border-orange-600 text-orange-600">
+                              Not Verified
                             </Badge>
                             <span>Views: {article.view_count || 0}</span>
                             <span>Published: {new Date(article.created_at).toLocaleDateString()}</span>

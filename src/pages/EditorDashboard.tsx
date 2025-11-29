@@ -40,6 +40,27 @@ export default function EditorDashboard() {
     if (user && hasRole('editor')) {
       fetchArticles()
       fetchCategories()
+      
+      // Real-time subscription for articles
+      const articlesChannel = supabase
+        .channel('editor-articles-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'articles',
+            filter: `author=eq.${user.id}`
+          },
+          () => {
+            fetchArticles()
+          }
+        )
+        .subscribe()
+
+      return () => {
+        supabase.removeChannel(articlesChannel)
+      }
     }
   }, [user, profile])
 
@@ -97,12 +118,14 @@ export default function EditorDashboard() {
         url: `#article-${Date.now()}`, // Generate URL
         author: user?.id,
         source_name: articleForm.source_name,
-        image_url: articleForm.image_url || null,
+        url_to_image: articleForm.image_url || null,
         is_featured: false,
         is_trending: false,
         is_editors_pick: true,
+        is_verified: false, // Editor content is not verified
         view_count: 0,
-        credibility_score: 8.5
+        credibility_score: 8.5,
+        published_at: new Date().toISOString()
       }
 
       let result
@@ -344,6 +367,9 @@ export default function EditorDashboard() {
                           <p className="text-muted-foreground text-sm mb-3 line-clamp-2">{article.excerpt}</p>
                           <div className="flex items-center gap-4 text-sm text-muted-foreground">
                             <Badge variant="outline">{article.categories?.name}</Badge>
+                            <Badge variant="secondary" className="bg-orange-100 text-orange-700">
+                              Not Verified
+                            </Badge>
                             <span>Views: {article.view_count || 0}</span>
                             <span>Published: {new Date(article.created_at).toLocaleDateString()}</span>
                           </div>
