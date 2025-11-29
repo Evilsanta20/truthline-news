@@ -36,63 +36,8 @@ const RELIABLE_SOURCES = [
   }
 ]
 
-// Immediate fresh articles to add right now
-const IMMEDIATE_FRESH_ARTICLES = [
-  {
-    title: "OpenAI Announces GPT-5 with Revolutionary Multimodal Capabilities",
-    description: "OpenAI's latest model demonstrates unprecedented reasoning abilities across text, images, and code, setting new benchmarks in AI performance.",
-    content: "OpenAI has unveiled GPT-5, marking the most significant advancement in artificial intelligence since ChatGPT's initial release. The new model demonstrates remarkable improvements in reasoning, coding, and multimodal understanding, with performance gains of up to 300% in complex problem-solving tasks. Early testing shows exceptional capabilities in scientific research, creative writing, and mathematical reasoning.",
-    url: `https://openai.com/gpt-5-announcement-${Date.now()}`,
-    source_name: "OpenAI Official",
-    author: "OpenAI Team",
-    tags: ["ai", "openai", "gpt", "technology", "machine learning", "breakthrough"]
-  },
-  {
-    title: "Tesla Unveils Self-Driving Robotaxis in Major Cities Worldwide",
-    description: "Tesla's fully autonomous robotaxi service launches in 25 major cities, revolutionizing urban transportation with zero-emission vehicles.",
-    content: "Tesla has officially launched its long-awaited robotaxi service in 25 major cities across North America, Europe, and Asia. The fully autonomous vehicles operate without human drivers, utilizing Tesla's latest FSD (Full Self-Driving) technology. The service promises to reduce urban traffic by 40% and provides 24/7 transportation at 60% lower costs than traditional ride-sharing services.",
-    url: `https://tesla.com/robotaxi-launch-${Date.now()}`,
-    source_name: "Tesla Motors",
-    author: "Elon Musk",
-    tags: ["tesla", "autonomous", "robotaxi", "transportation", "electric vehicles", "technology"]
-  },
-  {
-    title: "Major Breakthrough: Scientists Develop Room-Temperature Superconductor",
-    description: "Revolutionary material breakthrough enables superconductivity at room temperature, promising to transform energy infrastructure globally.",
-    content: "Scientists at leading research institutions have successfully created a room-temperature superconductor, solving one of physics' greatest challenges. The breakthrough material, dubbed 'RT-1', maintains superconducting properties at standard atmospheric conditions. This discovery is expected to revolutionize power grids, magnetic levitation transportation, and quantum computing infrastructure worldwide.",
-    url: `https://nature.com/superconductor-breakthrough-${Date.now()}`,
-    source_name: "Nature Science",
-    author: "Dr. Sarah Chen",
-    tags: ["physics", "superconductor", "science", "breakthrough", "energy", "technology"]
-  },
-  {
-    title: "Global Internet Speed Increases 500% with New Satellite Network",
-    description: "Next-generation satellite constellation delivers ultra-high-speed internet to every corner of the planet, eliminating digital divides.",
-    content: "A revolutionary satellite network comprising 10,000 low-earth-orbit satellites has been fully deployed, providing ultra-high-speed internet access globally. The network delivers consistent 1Gbps speeds even in remote areas, effectively eliminating the digital divide. The technology promises to connect the remaining 3 billion people without reliable internet access.",
-    url: `https://globalsat.com/network-complete-${Date.now()}`,
-    source_name: "Global Satellite Network",
-    author: "Network Operations Team",
-    tags: ["internet", "satellite", "connectivity", "technology", "global", "infrastructure"]
-  },
-  {
-    title: "Revolutionary Gene Therapy Cures Type 1 Diabetes in Clinical Trial",
-    description: "Groundbreaking gene therapy treatment successfully restores insulin production in Type 1 diabetes patients, eliminating need for daily injections.",
-    content: "A revolutionary gene therapy treatment has successfully cured Type 1 diabetes in 95% of clinical trial participants. The therapy reprograms patients' cells to produce insulin naturally, eliminating the need for daily insulin injections. The treatment represents a potential cure for the 1.6 million Americans living with Type 1 diabetes.",
-    url: `https://medical-journal.com/diabetes-cure-${Date.now()}`,
-    source_name: "Medical Research Today",
-    author: "Dr. Maria Rodriguez",
-    tags: ["diabetes", "gene therapy", "medical", "cure", "health", "breakthrough"]
-  },
-  {
-    title: "Quantum Internet Successfully Connects Major Cities Worldwide",
-    description: "First quantum internet network links New York, London, Tokyo, and Berlin, enabling ultra-secure communications.",
-    content: "The world's first quantum internet network has successfully connected major cities across continents, creating an ultra-secure communication infrastructure. The network uses quantum entanglement to ensure completely unbreakable encryption, revolutionizing secure communications for governments, financial institutions, and critical infrastructure.",
-    url: `https://quantum-network.com/global-launch-${Date.now()}`,
-    source_name: "Quantum Communications Corp",
-    author: "Dr. James Liu",
-    tags: ["quantum", "internet", "security", "communications", "technology", "encryption"]
-  }
-]
+// No hardcoded articles - only fetch from real RSS sources
+const IMMEDIATE_FRESH_ARTICLES: any[] = []
 
 async function parseRSSFeed(rssText: string, sourceName: string): Promise<any[]> {
   try {
