@@ -380,7 +380,8 @@ Deno.serve(async (req) => {
             credibility_score: getSourceCredibilityScore(article.sourceName),
             engagement_score: Math.floor(Math.random() * 100) + 50,
             is_trending: Math.random() > 0.8,
-            is_featured: Math.random() > 0.9
+            is_featured: Math.random() > 0.9,
+            is_verified: true // External news sources are verified
           }
 
           if (existingArticle && forceRefresh) {

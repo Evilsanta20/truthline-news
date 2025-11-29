@@ -130,6 +130,7 @@ export type Database = {
           is_editors_pick: boolean | null
           is_featured: boolean | null
           is_trending: boolean | null
+          is_verified: boolean | null
           last_verified_at: string | null
           mood_depth_score: number | null
           mood_positivity_score: number | null
@@ -170,6 +171,7 @@ export type Database = {
           is_editors_pick?: boolean | null
           is_featured?: boolean | null
           is_trending?: boolean | null
+          is_verified?: boolean | null
           last_verified_at?: string | null
           mood_depth_score?: number | null
           mood_positivity_score?: number | null
@@ -210,6 +212,7 @@ export type Database = {
           is_editors_pick?: boolean | null
           is_featured?: boolean | null
           is_trending?: boolean | null
+          is_verified?: boolean | null
           last_verified_at?: string | null
           mood_depth_score?: number | null
           mood_positivity_score?: number | null
