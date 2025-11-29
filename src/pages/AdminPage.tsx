@@ -7,9 +7,10 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Shield, Users, FileText, Eye, Trash2, CheckCircle, XCircle, TrendingUp, Star, Tag, Plus, Edit } from 'lucide-react'
+import { Shield, Users, FileText, Eye, Trash2, CheckCircle, XCircle, TrendingUp, Star, Tag, Plus, Edit, Search, Filter, ShieldCheck } from 'lucide-react'
 import { CategoryManagement } from '@/components/admin/CategoryManagement'
 import { ArticleEditor } from '@/components/admin/ArticleEditor'
+import { Input } from '@/components/ui/input'
 
 export default function AdminPage() {
   const { toast } = useToast()
@@ -23,11 +24,57 @@ export default function AdminPage() {
   })
   const [editorOpen, setEditorOpen] = useState(false)
   const [selectedArticle, setSelectedArticle] = useState<any>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterStatus, setFilterStatus] = useState<'all' | 'verified' | 'unverified'>('all')
+  const [filterCategory, setFilterCategory] = useState<string>('all')
+  const [categories, setCategories] = useState<any[]>([])
 
   useEffect(() => {
     fetchArticles()
     fetchStats()
+    fetchCategories()
+    
+    // Real-time subscription for articles
+    const articlesChannel = supabase
+      .channel('admin-articles-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'articles'
+        },
+        () => {
+          fetchArticles()
+          fetchStats()
+        }
+      )
+      .subscribe()
+
+    // Real-time subscription for stats
+    const statsRefreshInterval = setInterval(() => {
+      fetchStats()
+    }, 30000) // Refresh stats every 30 seconds
+
+    return () => {
+      supabase.removeChannel(articlesChannel)
+      clearInterval(statsRefreshInterval)
+    }
   }, [])
+
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .order('name')
+
+      if (error) throw error
+      setCategories(data || [])
+    } catch (error: any) {
+      console.error('Error fetching categories:', error)
+    }
+  }
 
   const fetchArticles = async () => {
     try {
@@ -72,6 +119,30 @@ export default function AdminPage() {
       toast({
         title: "Error",
         description: "Failed to fetch statistics",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const toggleVerification = async (articleId: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('articles')
+        .update({ is_verified: !currentStatus })
+        .eq('id', articleId)
+
+      if (error) throw error
+
+      toast({
+        title: "Success",
+        description: `Article ${!currentStatus ? 'verified' : 'unverified'} successfully`
+      })
+      
+      fetchArticles()
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
         variant: "destructive"
       })
     }
@@ -148,6 +219,20 @@ export default function AdminPage() {
     fetchArticles()
     fetchStats()
   }
+
+  // Filter articles based on search and filters
+  const filteredArticles = articles.filter(article => {
+    const matchesSearch = article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         article.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    
+    const matchesStatus = filterStatus === 'all' || 
+                         (filterStatus === 'verified' && article.is_verified) ||
+                         (filterStatus === 'unverified' && !article.is_verified)
+    
+    const matchesCategory = filterCategory === 'all' || article.category_id === filterCategory
+
+    return matchesSearch && matchesStatus && matchesCategory
+  })
 
   return (
     <div className="min-h-screen bg-white">
@@ -262,7 +347,7 @@ export default function AdminPage() {
           <TabsContent value="articles">
             <Card className="border-gray-200">
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-4">
                   <div>
                     <CardTitle className="text-black">Article Management</CardTitle>
                     <CardDescription className="text-gray-600">
@@ -274,6 +359,40 @@ export default function AdminPage() {
                     Create Article
                   </Button>
                 </div>
+                
+                {/* Filters and Search */}
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Input
+                      placeholder="Search articles..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Filter by status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Articles</SelectItem>
+                      <SelectItem value="verified">Verified Only</SelectItem>
+                      <SelectItem value="unverified">Unverified Only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={filterCategory} onValueChange={setFilterCategory}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Filter by category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
@@ -283,6 +402,7 @@ export default function AdminPage() {
                         <TableHead className="text-black">Title</TableHead>
                         <TableHead className="text-black">Source</TableHead>
                         <TableHead className="text-black">Category</TableHead>
+                        <TableHead className="text-black">Verification</TableHead>
                         <TableHead className="text-black">Status</TableHead>
                         <TableHead className="text-black">Views</TableHead>
                         <TableHead className="text-black">Created</TableHead>
@@ -290,7 +410,14 @@ export default function AdminPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {articles.map((article) => (
+                      {filteredArticles.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center text-gray-500 py-8">
+                            No articles found
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredArticles.map((article) => (
                         <TableRow key={article.id}>
                           <TableCell className="font-medium text-black max-w-xs">
                             <div className="truncate" title={article.title}>
@@ -300,8 +427,20 @@ export default function AdminPage() {
                           <TableCell className="text-black">{article.source_name || 'Unknown'}</TableCell>
                           <TableCell>
                             <Badge variant="outline" className="border-blue-600 text-blue-600">
-                              {article.categories?.name}
+                              {article.categories?.name || 'Uncategorized'}
                             </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {article.is_verified ? (
+                              <Badge className="bg-green-600 text-white text-xs">
+                                <ShieldCheck className="w-3 h-3 mr-1" />
+                                Verified
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="border-orange-500 text-orange-700 text-xs">
+                                Not Verified
+                              </Badge>
+                            )}
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
@@ -323,6 +462,15 @@ export default function AdminPage() {
                           <TableCell className="text-black">{new Date(article.created_at).toLocaleDateString()}</TableCell>
                           <TableCell>
                             <div className="flex gap-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => toggleVerification(article.id, article.is_verified)}
+                                className={article.is_verified ? 'border-green-600 bg-green-50 text-green-600' : 'border-orange-500 text-orange-600'}
+                                title="Toggle Verification"
+                              >
+                                <ShieldCheck className="w-3 h-3" />
+                              </Button>
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -371,7 +519,8 @@ export default function AdminPage() {
                             </div>
                           </TableCell>
                         </TableRow>
-                      ))}
+                      ))
+                      )}
                     </TableBody>
                   </Table>
                 </div>
