@@ -55,6 +55,17 @@ export default function CategorizedNewsFeed({ userId }: CategorizedNewsFeedProps
     loadArticles()
   }, [])
 
+  // Auto-cleanup and refresh every 5 minutes
+  useEffect(() => {
+    const autoCleanupInterval = setInterval(async () => {
+      console.log('Auto-cleaning categorized news (5min interval)')
+      setArticlesByCategory({}) // Clear immediately
+      await fetchFreshNews()
+    }, 5 * 60 * 1000) // 5 minutes
+
+    return () => clearInterval(autoCleanupInterval)
+  }, [])
+
   const loadArticles = async () => {
     try {
       setLoading(true)
