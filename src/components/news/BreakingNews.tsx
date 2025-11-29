@@ -38,7 +38,7 @@ export default function BreakingNews({ className }: BreakingNewsProps) {
     try {
       if (showToast) setIsRefreshing(true)
       
-      const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
+      const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
       
       const { data, error } = await supabase
         .from('articles')
@@ -57,7 +57,7 @@ export default function BreakingNews({ className }: BreakingNewsProps) {
             color
           )
         `)
-        .gte('published_at', sixHoursAgo)
+        .gte('published_at', threeHoursAgo)
         .gte('credibility_score', 0.5) // Higher threshold for breaking news
         .order('published_at', { ascending: false })
         .limit(10)
@@ -94,11 +94,11 @@ export default function BreakingNews({ className }: BreakingNewsProps) {
         (payload) => {
           const newArticle = payload.new as any
           
-          // Check if article is within 6 hours and has good credibility
-          const sixHoursAgo = Date.now() - 6 * 60 * 60 * 1000
+          // Check if article is within 3 hours and has good credibility
+          const threeHoursAgo = Date.now() - 3 * 60 * 60 * 1000
           const articleTime = new Date(newArticle.published_at).getTime()
           
-          if (articleTime >= sixHoursAgo && (newArticle.credibility_score || 0) >= 0.5) {
+          if (articleTime >= threeHoursAgo && (newArticle.credibility_score || 0) >= 0.5) {
             console.log('🔴 Breaking: New article received', newArticle.title)
             
             // Increment counter for user notification
@@ -177,7 +177,7 @@ export default function BreakingNews({ className }: BreakingNewsProps) {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground text-center py-4">
-            No breaking news in the last 6 hours. Check back soon!
+            No breaking news in the last 3 hours. Check back soon!
           </p>
         </CardContent>
       </Card>
@@ -221,7 +221,7 @@ export default function BreakingNews({ className }: BreakingNewsProps) {
           </div>
           <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
             <Clock className="w-3 h-3" />
-            Last 6 hours • Real-time updates • High credibility sources
+            Last 3 hours • Real-time updates • High credibility sources
           </p>
         </CardHeader>
         <CardContent className="pt-0">

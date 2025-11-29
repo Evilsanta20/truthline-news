@@ -127,8 +127,8 @@ export const useAutoRefresh = ({
           .filter(Boolean)
           .sort((a: string, b: string) => new Date(b).getTime() - new Date(a).getTime())[0]
         const hoursOld = newestPub ? (Date.now() - new Date(newestPub).getTime()) / 36e5 : 24
-        if (hoursOld > 12) {
-          const recentCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+        if (hoursOld > 3) {
+          const recentCutoff = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
           const { data: dbLatest } = await supabase
             .from('articles')
             .select('*')
@@ -160,7 +160,7 @@ export const useAutoRefresh = ({
       } else {
         // Fallback A: DB since last_verified_at > latestTimestamp
         if (latestTimestamp) {
-          const recentCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+          const recentCutoff = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
           const { data: dbNew } = await supabase
             .from('articles')
             .select('*')
@@ -180,7 +180,7 @@ export const useAutoRefresh = ({
             setLatestTimestamp(new Date().toISOString())
           } else {
             // Fallback B: Just take the latest verified/published items
-            const recentCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+            const recentCutoff = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
             const { data: dbLatest } = await supabase
               .from('articles')
               .select('*')
@@ -274,8 +274,8 @@ export const useAutoRefresh = ({
           .filter(Boolean)
           .sort((a: string, b: string) => new Date(b).getTime() - new Date(a).getTime())[0]
         const hoursOld = newestPub ? (Date.now() - new Date(newestPub).getTime()) / 36e5 : 24
-        if (hoursOld > 12) {
-          const recentCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+        if (hoursOld > 3) {
+          const recentCutoff = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
           const { data: dbInitial } = await supabase
             .from('articles')
             .select('*')
@@ -292,7 +292,7 @@ export const useAutoRefresh = ({
         }
       } else {
         // Fallback: load recent articles directly from DB
-        const recentCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+        const recentCutoff = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
         const { data: dbInitial, error: dbErr } = await supabase
           .from('articles')
           .select('*')
@@ -361,7 +361,7 @@ export const useAutoRefresh = ({
         .from('articles')
         .select('*')
         .not('id', 'in', `(${[...shownArticleIds].join(',') || 'null'})`)
-        .gte('published_at', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString())
+        .gte('published_at', new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString())
         .order('published_at', { ascending: false })
         .limit(20)
       
