@@ -26,8 +26,10 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // If no articleIds provided, fetch from interactions
+    // If no articleIds provided, fetch from interactions first, then fallback to fresh articles
     let finalArticleIds = articleIds;
+    let usedFreshArticles = false;
+    
     if (!articleIds || articleIds.length === 0) {
       console.log('No articleIds provided, fetching from interactions...');
       const todayStart = new Date();
@@ -49,12 +51,28 @@ serve(async (req) => {
       }
     }
 
+    // If still no articles, get the freshest articles from database
     if (!finalArticleIds || finalArticleIds.length === 0) {
-      console.log('No articles to process for digest');
+      console.log('No interactions found, fetching fresh articles from database...');
+      const { data: freshArticles, error: freshError } = await supabase
+        .from('articles')
+        .select('id')
+        .order('created_at', { ascending: false })
+        .limit(15);
+      
+      if (!freshError && freshArticles && freshArticles.length > 0) {
+        finalArticleIds = freshArticles.map((a: any) => a.id);
+        usedFreshArticles = true;
+        console.log(`Using ${finalArticleIds.length} fresh articles from database`);
+      }
+    }
+
+    if (!finalArticleIds || finalArticleIds.length === 0) {
+      console.log('No articles available for digest');
       return new Response(
         JSON.stringify({ 
-          summary: "You haven't read any articles today yet. Start exploring to see your daily digest!",
-          highlights: ["Try browsing the news feed to discover interesting stories", "Bookmark articles you want to read later", "Check back here to see your personalized digest"],
+          summary: "No articles available right now. Try refreshing the news feed to get the latest stories!",
+          highlights: ["Click the refresh button to fetch new articles", "Your personalized digest will appear after reading some news"],
           topics: [],
           sources: [],
           articleCount: 0,
