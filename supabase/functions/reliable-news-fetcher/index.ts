@@ -10,29 +10,49 @@ const corsHeaders = {
 // Reliable news sources with direct RSS/API access
 const RELIABLE_SOURCES = [
   {
-    name: 'BBC News',
-    rss: 'http://feeds.bbci.co.uk/news/rss.xml',
+    name: 'BBC World',
+    rss: 'https://feeds.bbci.co.uk/news/world/rss.xml',
     category: 'general'
   },
   {
     name: 'BBC Tech',
-    rss: 'http://feeds.bbci.co.uk/news/technology/rss.xml',
+    rss: 'https://feeds.bbci.co.uk/news/technology/rss.xml',
     category: 'technology'
   },
   {
     name: 'BBC Business',
-    rss: 'http://feeds.bbci.co.uk/news/business/rss.xml',
+    rss: 'https://feeds.bbci.co.uk/news/business/rss.xml',
     category: 'business'
   },
   {
-    name: 'CNN Top Stories',
-    rss: 'http://rss.cnn.com/rss/edition.rss',
+    name: 'BBC Entertainment',
+    rss: 'https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml',
+    category: 'entertainment'
+  },
+  {
+    name: 'NPR News',
+    rss: 'https://feeds.npr.org/1001/rss.xml',
     category: 'general'
   },
   {
-    name: 'TechCrunch',
-    rss: 'https://techcrunch.com/feed/',
+    name: 'NPR Technology',
+    rss: 'https://feeds.npr.org/1019/rss.xml',
     category: 'technology'
+  },
+  {
+    name: 'The Guardian World',
+    rss: 'https://www.theguardian.com/world/rss',
+    category: 'general'
+  },
+  {
+    name: 'The Guardian Tech',
+    rss: 'https://www.theguardian.com/uk/technology/rss',
+    category: 'technology'
+  },
+  {
+    name: 'ESPN Sports',
+    rss: 'https://www.espn.com/espn/rss/news',
+    category: 'sports'
   }
 ]
 
