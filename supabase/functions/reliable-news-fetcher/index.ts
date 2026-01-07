@@ -17,12 +17,12 @@ const GUARDIAN_SECTIONS = [
   { section: 'science', category: 'science' }
 ]
 
-// RSS sources as fallback
+// RSS sources as fallback (BBC only, Guardian uses API)
 const RSS_SOURCES = [
   { name: 'BBC World', rss: 'https://feeds.bbci.co.uk/news/world/rss.xml', category: 'general' },
   { name: 'BBC Tech', rss: 'https://feeds.bbci.co.uk/news/technology/rss.xml', category: 'technology' },
-  { name: 'NPR News', rss: 'https://feeds.npr.org/1001/rss.xml', category: 'general' },
-  { name: 'ESPN Sports', rss: 'https://www.espn.com/espn/rss/news', category: 'sports' }
+  { name: 'BBC Business', rss: 'https://feeds.bbci.co.uk/news/business/rss.xml', category: 'business' },
+  { name: 'BBC Entertainment', rss: 'https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml', category: 'entertainment' }
 ]
 
 async function fetchGuardianNews(apiKey: string, section: string): Promise<any[]> {
