@@ -7,61 +7,60 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Reliable news sources with direct RSS/API access
-const RELIABLE_SOURCES = [
-  {
-    name: 'BBC World',
-    rss: 'https://feeds.bbci.co.uk/news/world/rss.xml',
-    category: 'general'
-  },
-  {
-    name: 'BBC Tech',
-    rss: 'https://feeds.bbci.co.uk/news/technology/rss.xml',
-    category: 'technology'
-  },
-  {
-    name: 'BBC Business',
-    rss: 'https://feeds.bbci.co.uk/news/business/rss.xml',
-    category: 'business'
-  },
-  {
-    name: 'BBC Entertainment',
-    rss: 'https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml',
-    category: 'entertainment'
-  },
-  {
-    name: 'NPR News',
-    rss: 'https://feeds.npr.org/1001/rss.xml',
-    category: 'general'
-  },
-  {
-    name: 'NPR Technology',
-    rss: 'https://feeds.npr.org/1019/rss.xml',
-    category: 'technology'
-  },
-  {
-    name: 'The Guardian World',
-    rss: 'https://www.theguardian.com/world/rss',
-    category: 'general'
-  },
-  {
-    name: 'The Guardian Tech',
-    rss: 'https://www.theguardian.com/uk/technology/rss',
-    category: 'technology'
-  },
-  {
-    name: 'ESPN Sports',
-    rss: 'https://www.espn.com/espn/rss/news',
-    category: 'sports'
-  }
+// Guardian API categories mapping
+const GUARDIAN_SECTIONS = [
+  { section: 'world', category: 'general' },
+  { section: 'technology', category: 'technology' },
+  { section: 'business', category: 'business' },
+  { section: 'sport', category: 'sports' },
+  { section: 'culture', category: 'entertainment' },
+  { section: 'science', category: 'science' }
 ]
 
-// No hardcoded articles - only fetch from real RSS sources
-const IMMEDIATE_FRESH_ARTICLES: any[] = []
+// RSS sources as fallback
+const RSS_SOURCES = [
+  { name: 'BBC World', rss: 'https://feeds.bbci.co.uk/news/world/rss.xml', category: 'general' },
+  { name: 'BBC Tech', rss: 'https://feeds.bbci.co.uk/news/technology/rss.xml', category: 'technology' },
+  { name: 'NPR News', rss: 'https://feeds.npr.org/1001/rss.xml', category: 'general' },
+  { name: 'ESPN Sports', rss: 'https://www.espn.com/espn/rss/news', category: 'sports' }
+]
+
+async function fetchGuardianNews(apiKey: string, section: string): Promise<any[]> {
+  try {
+    const url = `https://content.guardianapis.com/search?section=${section}&show-fields=headline,trailText,body,thumbnail,byline&page-size=15&api-key=${apiKey}`
+    
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 8000)
+    
+    const response = await fetch(url, { signal: controller.signal })
+    clearTimeout(timeoutId)
+    
+    if (!response.ok) {
+      console.warn(`Guardian API error for ${section}: ${response.status}`)
+      return []
+    }
+    
+    const data = await response.json()
+    const results = data.response?.results || []
+    
+    return results.map((item: any) => ({
+      title: item.fields?.headline || item.webTitle,
+      description: item.fields?.trailText || '',
+      content: item.fields?.body?.replace(/<[^>]*>/g, '').substring(0, 2000) || item.fields?.trailText || '',
+      url: item.webUrl,
+      urlToImage: item.fields?.thumbnail || null,
+      author: item.fields?.byline || 'The Guardian',
+      publishedAt: item.webPublicationDate,
+      sourceName: 'The Guardian'
+    }))
+  } catch (error) {
+    console.warn(`Guardian fetch failed for ${section}:`, error.message)
+    return []
+  }
+}
 
 async function parseRSSFeed(rssText: string, sourceName: string): Promise<any[]> {
   try {
-    // Simple RSS parsing for title, description, link, pubDate
     const items = rssText.match(/<item[^>]*>([\s\S]*?)<\/item>/gi) || []
     
     return items.map(item => {
@@ -69,15 +68,17 @@ async function parseRSSFeed(rssText: string, sourceName: string): Promise<any[]>
       const description = item.match(/<description[^>]*>([\s\S]*?)<\/description>/i)?.[1]?.replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1') || ''
       const link = item.match(/<link[^>]*>([\s\S]*?)<\/link>/i)?.[1] || ''
       const pubDate = item.match(/<pubDate[^>]*>([\s\S]*?)<\/pubDate>/i)?.[1] || new Date().toISOString()
+      const mediaContent = item.match(/<media:content[^>]*url="([^"]+)"/i)?.[1] || null
       
       return {
         title: title.trim(),
         description: description.trim().replace(/<[^>]*>/g, ''),
         url: link.trim(),
+        urlToImage: mediaContent,
         sourceName,
         publishedAt: pubDate,
         content: description.trim().replace(/<[^>]*>/g, ''),
-        category: 'general'
+        author: null
       }
     }).filter(article => article.title && article.url)
   } catch (error) {
@@ -97,69 +98,81 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
+    const GUARDIAN_API_KEY = Deno.env.get('GUARDIAN_API_KEY')
+
     console.log('🔄 Reliable News Fetcher - Starting fresh news collection')
+    console.log(`📰 Guardian API Key configured: ${!!GUARDIAN_API_KEY}`)
 
     let totalArticles = 0
+    let guardianArticles = 0
+    let rssArticles = 0
     const startTime = Date.now()
 
-    // First, add immediate fresh articles with proper categorization
-    console.log('📰 Adding immediate fresh articles...')
-    for (const article of IMMEDIATE_FRESH_ARTICLES) {
-      try {
-        // Determine category based on tags
-        let categorySlug = 'general'
-        if (article.tags.some(t => ['ai', 'technology', 'tech'].includes(t))) categorySlug = 'technology'
-        else if (article.tags.some(t => ['medical', 'health', 'cure'].includes(t))) categorySlug = 'health'
-        else if (article.tags.some(t => ['science', 'physics', 'research'].includes(t))) categorySlug = 'science'
-        
-        // Get category_id
-        const { data: categoryData } = await supabaseClient
-          .from('categories')
-          .select('id')
-          .eq('slug', categorySlug)
-          .single()
-        
-        const { data: articleId, error: upsertError } = await supabaseClient.rpc('upsert_article', {
-          p_title: article.title,
-          p_url: article.url,
-          p_description: article.description,
-          p_content: article.content,
-          p_url_to_image: null,
-          p_source_name: article.source_name,
-          p_author: article.author,
-          p_published_at: new Date().toISOString(),
-          p_topic_tags: article.tags,
-          p_bias_score: 0.4 + Math.random() * 0.2,
-          p_credibility_score: 0.8 + Math.random() * 0.2,
-          p_sentiment_score: 0.4 + Math.random() * 0.4,
-          p_content_quality_score: 0.8 + Math.random() * 0.2,
-          p_engagement_score: Math.floor(Math.random() * 50) + 20
-        })
-
-        if (!upsertError && articleId) {
-          // Update category_id if we found one
-          if (categoryData?.id) {
-            await supabaseClient
-              .from('articles')
-              .update({ category_id: categoryData.id })
-              .eq('id', articleId)
+    // Priority 1: Fetch from Guardian API (most reliable, high-quality content)
+    if (GUARDIAN_API_KEY) {
+      console.log('🗞️ Fetching from The Guardian API...')
+      
+      for (const { section, category } of GUARDIAN_SECTIONS) {
+        try {
+          const articles = await fetchGuardianNews(GUARDIAN_API_KEY, section)
+          console.log(`Guardian ${section}: Retrieved ${articles.length} articles`)
+          
+          const { data: categoryData } = await supabaseClient
+            .from('categories')
+            .select('id')
+            .eq('slug', category)
+            .single()
+          
+          for (const article of articles) {
+            try {
+              const { data: articleId, error: upsertError } = await supabaseClient.rpc('upsert_article', {
+                p_title: article.title.substring(0, 500),
+                p_url: article.url,
+                p_description: article.description.substring(0, 1000),
+                p_content: article.content,
+                p_url_to_image: article.urlToImage,
+                p_source_name: article.sourceName,
+                p_author: article.author,
+                p_published_at: new Date(article.publishedAt).toISOString(),
+                p_topic_tags: [category, section],
+                p_bias_score: 0.45 + Math.random() * 0.1,
+                p_credibility_score: 0.85 + Math.random() * 0.15,
+                p_sentiment_score: 0.4 + Math.random() * 0.3,
+                p_content_quality_score: 0.85 + Math.random() * 0.15,
+                p_engagement_score: Math.floor(Math.random() * 40) + 20
+              })
+              
+              if (!upsertError && articleId) {
+                if (categoryData?.id) {
+                  await supabaseClient
+                    .from('articles')
+                    .update({ category_id: categoryData.id })
+                    .eq('id', articleId)
+                }
+                guardianArticles++
+                totalArticles++
+              }
+            } catch (error) {
+              console.warn('Failed to store Guardian article:', error)
+            }
           }
-          totalArticles++
-          console.log(`✅ Added to ${categorySlug}: ${article.title.substring(0, 50)}...`)
+        } catch (error) {
+          console.warn(`Guardian ${section} failed:`, error.message)
         }
-      } catch (error) {
-        console.warn('Failed to add article:', error)
       }
+      console.log(`✅ Guardian API: Added ${guardianArticles} articles`)
+    } else {
+      console.warn('⚠️ GUARDIAN_API_KEY not configured, skipping Guardian API')
     }
 
-    // Then try RSS feeds (with timeout and error handling)
+    // Priority 2: Fetch from RSS feeds as supplementary sources
     console.log('🔍 Fetching from RSS sources...')
-    for (const source of RELIABLE_SOURCES) {
+    for (const source of RSS_SOURCES) {
       try {
         console.log(`Fetching from ${source.name}...`)
         
         const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 5000)
         
         const response = await fetch(source.rss, {
           signal: controller.signal,
@@ -177,23 +190,22 @@ serve(async (req) => {
           
           console.log(`${source.name}: Retrieved ${articles.length} articles`)
           
+          const { data: categoryData } = await supabaseClient
+            .from('categories')
+            .select('id')
+            .eq('slug', source.category)
+            .single()
+          
           for (const article of articles.slice(0, 10)) {
             try {
-              // Get category_id based on source category
-              const { data: categoryData } = await supabaseClient
-                .from('categories')
-                .select('id')
-                .eq('slug', source.category)
-                .single()
-              
               const { data: articleId, error: upsertError } = await supabaseClient.rpc('upsert_article', {
                 p_title: article.title.substring(0, 500),
                 p_url: article.url,
                 p_description: article.description.substring(0, 1000),
                 p_content: article.content,
-                p_url_to_image: null,
+                p_url_to_image: article.urlToImage,
                 p_source_name: article.sourceName,
-                p_author: article.author || null,
+                p_author: article.author,
                 p_published_at: new Date(article.publishedAt).toISOString(),
                 p_topic_tags: [source.category],
                 p_bias_score: 0.4 + Math.random() * 0.2,
@@ -210,10 +222,11 @@ serve(async (req) => {
                     .update({ category_id: categoryData.id })
                     .eq('id', articleId)
                 }
+                rssArticles++
                 totalArticles++
               }
             } catch (error) {
-              console.warn('Failed to store article:', error)
+              console.warn('Failed to store RSS article:', error)
             }
           }
         } else {
@@ -223,6 +236,7 @@ serve(async (req) => {
         console.warn(`${source.name} fetch failed:`, error.message)
       }
     }
+    console.log(`✅ RSS Sources: Added ${rssArticles} articles`)
 
     // Update freshness scores
     const { data: freshnessCount } = await supabaseClient.rpc('update_data_freshness')
@@ -234,9 +248,9 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       success: true,
       total_articles: totalArticles,
+      guardian_articles: guardianArticles,
+      rss_articles: rssArticles,
       execution_time_ms: executionTime,
-      immediate_articles: IMMEDIATE_FRESH_ARTICLES.length,
-      rss_sources_processed: RELIABLE_SOURCES.length,
       timestamp: new Date().toISOString()
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
