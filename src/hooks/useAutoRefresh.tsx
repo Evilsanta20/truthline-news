@@ -128,13 +128,13 @@ export const useAutoRefresh = ({
           .sort((a: string, b: string) => new Date(b).getTime() - new Date(a).getTime())[0]
         const hoursOld = newestPub ? (Date.now() - new Date(newestPub).getTime()) / 36e5 : 24
         if (hoursOld > 3) {
-          const recentCutoff = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
+          // Use created_at (when stored in DB) instead of published_at for recency
+          const recentCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
           const { data: dbLatest } = await supabase
             .from('articles')
             .select('*')
-            .gte('published_at', recentCutoff)
-            .order('last_verified_at', { ascending: false })
-            .order('published_at', { ascending: false })
+            .gte('created_at', recentCutoff)
+            .order('created_at', { ascending: false })
             .limit(30)
           const mapped = (dbLatest as any[] || []).map(a => ({ ...a, recommendation_score: a.recommendation_score ?? Math.random() * 100 }))
           if (isAtTop) {
@@ -158,46 +158,28 @@ export const useAutoRefresh = ({
           }
         }
       } else {
-        // Fallback A: DB since last_verified_at > latestTimestamp
-        if (latestTimestamp) {
-          const recentCutoff = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
-          const { data: dbNew } = await supabase
-            .from('articles')
-            .select('*')
-            .gt('last_verified_at', latestTimestamp)
-            .gte('published_at', recentCutoff)
-            .order('last_verified_at', { ascending: false })
-            .limit(30)
-          if ((dbNew?.length || 0) > 0) {
-            const mapped = (dbNew as any[]).map(a => ({ ...a, recommendation_score: a.recommendation_score ?? Math.random() * 100 }))
+        // Fallback A: DB since created_at > latestTimestamp (last 24h window)
+        const recentCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+        const { data: dbNew } = await supabase
+          .from('articles')
+          .select('*')
+          .gte('created_at', recentCutoff)
+          .order('created_at', { ascending: false })
+          .limit(30)
+        if ((dbNew?.length || 0) > 0) {
+          const mapped = (dbNew as any[]).map(a => ({ ...a, recommendation_score: a.recommendation_score ?? Math.random() * 100 }))
+          const filteredMapped = filterNewArticles(mapped)
+          if (filteredMapped.length > 0) {
+            markArticlesAsShown(filteredMapped)
             if (isAtTop) {
-              setArticles(prev => [...mapped, ...prev])
+              setArticles(prev => [...filteredMapped, ...prev])
               setPendingArticles([])
             } else {
-              setPendingArticles(prev => [...mapped, ...prev])
-              onNewArticles?.(mapped.length)
+              setPendingArticles(prev => [...filteredMapped, ...prev])
+              onNewArticles?.(filteredMapped.length)
             }
-            setLatestTimestamp(new Date().toISOString())
-          } else {
-            // Fallback B: Just take the latest verified/published items
-            const recentCutoff = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
-            const { data: dbLatest } = await supabase
-              .from('articles')
-              .select('*')
-              .gte('published_at', recentCutoff)
-              .order('last_verified_at', { ascending: false })
-              .order('published_at', { ascending: false })
-              .limit(30)
-            const mapped = (dbLatest as any[] || []).map(a => ({ ...a, recommendation_score: a.recommendation_score ?? Math.random() * 100 }))
-            if (isAtTop) {
-              setArticles(prev => [...mapped, ...prev])
-              setPendingArticles([])
-            } else {
-              setPendingArticles(prev => [...mapped, ...prev])
-              onNewArticles?.(mapped.length)
-            }
-            setLatestTimestamp(new Date().toISOString())
           }
+          setLatestTimestamp(new Date().toISOString())
         }
       }
 
@@ -275,34 +257,35 @@ export const useAutoRefresh = ({
           .sort((a: string, b: string) => new Date(b).getTime() - new Date(a).getTime())[0]
         const hoursOld = newestPub ? (Date.now() - new Date(newestPub).getTime()) / 36e5 : 24
         if (hoursOld > 3) {
-          const recentCutoff = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
+          // Use created_at (when stored in DB) for recency, 24h window
+          const recentCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
           const { data: dbInitial } = await supabase
             .from('articles')
             .select('*')
-            .gte('published_at', recentCutoff)
-            .order('last_verified_at', { ascending: false })
-            .order('published_at', { ascending: false })
+            .gte('created_at', recentCutoff)
+            .order('created_at', { ascending: false })
             .limit(30)
           const mapped = (dbInitial as any[] || []).map(a => ({ ...a, recommendation_score: a.recommendation_score ?? Math.random() * 100 }))
           setArticles(mapped)
+          markArticlesAsShown(mapped)
           setLatestTimestamp(new Date().toISOString())
         } else {
           setArticles(initialArticles)
           setLatestTimestamp(data?.latest_timestamp || new Date().toISOString())
         }
       } else {
-        // Fallback: load recent articles directly from DB
-        const recentCutoff = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
+        // Fallback: load recent articles directly from DB using created_at
+        const recentCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
         const { data: dbInitial, error: dbErr } = await supabase
           .from('articles')
           .select('*')
-          .gte('published_at', recentCutoff)
-          .order('last_verified_at', { ascending: false })
-          .order('published_at', { ascending: false })
+          .gte('created_at', recentCutoff)
+          .order('created_at', { ascending: false })
           .limit(30)
-        if (!dbErr) {
+        if (!dbErr && (dbInitial?.length || 0) > 0) {
           const mapped = (dbInitial as any[] || []).map(a => ({ ...a, recommendation_score: a.recommendation_score ?? Math.random() * 100 }))
           setArticles(mapped)
+          markArticlesAsShown(mapped)
           setLatestTimestamp(new Date().toISOString())
         }
       }
