@@ -347,13 +347,24 @@ export const useAutoRefresh = ({
     }
   }, [userId])
 
-  // Manually refresh all articles
+  // Clear the shown articles cache to get fresh articles
+  const clearShownArticlesCache = useCallback(() => {
+    setShownArticleIds(new Set())
+    localStorage.removeItem(`shown_articles_${userId}`)
+    console.log('🗑️ Cleared shown articles cache')
+  }, [userId])
+
+  // Manually refresh all articles (clears cache to show fresh content)
   const manualRefresh = useCallback(async () => {
+    // Clear cache first so we can see fresh articles
+    clearShownArticlesCache()
     setLatestTimestamp(null) // Reset timestamp to get all articles
     setPendingArticles([])
+    setArticles([]) // Clear current articles
+    setHasMore(true) // Reset hasMore flag
     await loadInitialArticles()
     setNextRefresh(refreshInterval) // Reset countdown
-  }, [loadInitialArticles, refreshInterval])
+  }, [loadInitialArticles, refreshInterval, clearShownArticlesCache])
 
   // Apply pending articles (when user clicks "show new articles")
   const applyPendingArticles = useCallback(() => {
@@ -463,6 +474,7 @@ export const useAutoRefresh = ({
     applyPendingArticles,
     updateArticleLocally,
     loadMoreArticles,
+    clearShownArticlesCache,
     shownArticleCount: shownArticleIds.size
   }
 }
