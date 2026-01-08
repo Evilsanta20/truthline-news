@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 
+const BACKGROUND_REFRESH_INTERVAL = 15 * 60 * 1000 // 15 minutes in milliseconds
+
 interface UseAutoRefreshOptions {
   userId: string
   refreshInterval?: number // in seconds, default 300 (5 minutes)
   onNewArticles?: (count: number) => void
   onRefreshComplete?: () => void
   enableDeduplication?: boolean // Track and exclude shown articles
+  enableBackgroundFetch?: boolean // Enable background API refresh every 15 min
 }
 
 interface Article {
@@ -25,7 +28,8 @@ export const useAutoRefresh = ({
   refreshInterval = 300,
   onNewArticles,
   onRefreshComplete,
-  enableDeduplication = true
+  enableDeduplication = true,
+  enableBackgroundFetch = true
 }: UseAutoRefreshOptions) => {
   const [articles, setArticles] = useState<Article[]>([])
   const [latestTimestamp, setLatestTimestamp] = useState<string | null>(null)
@@ -36,8 +40,10 @@ export const useAutoRefresh = ({
   const [nextRefresh, setNextRefresh] = useState(refreshInterval)
   const [shownArticleIds, setShownArticleIds] = useState<Set<string>>(new Set())
   const [hasMore, setHasMore] = useState(true)
+  const [lastBackgroundFetch, setLastBackgroundFetch] = useState<number>(Date.now())
   
   const scrollListenerRef = useRef<() => void>()
+  const backgroundFetchRef = useRef<NodeJS.Timeout | null>(null)
 
   // Load shown article IDs from localStorage
   useEffect(() => {
@@ -215,6 +221,52 @@ export const useAutoRefresh = ({
   useEffect(() => {
     setNextRefresh(refreshInterval)
   }, [userId, refreshInterval])
+
+  // Background fetch to refresh news from external sources every 15 minutes
+  useEffect(() => {
+    if (!enableBackgroundFetch) return
+
+    const triggerBackgroundFetch = async () => {
+      try {
+        console.log('🔄 Background fetch triggered at:', new Date().toISOString())
+        
+        const { data, error } = await supabase.functions.invoke('reliable-news-fetcher', {
+          body: { 
+            categories: ['general', 'technology', 'business', 'health', 'sports', 'politics'],
+            limit: 50
+          }
+        })
+        
+        if (error) {
+          console.error('Background fetch error:', error)
+          return
+        }
+        
+        console.log('✅ Background fetch completed:', data?.total_articles || 0, 'articles')
+        setLastBackgroundFetch(Date.now())
+        
+        // Trigger a local refresh to show new articles
+        fetchNewArticles()
+      } catch (err) {
+        console.error('Background fetch failed:', err)
+      }
+    }
+
+    // Initial check - if last fetch was more than 15 min ago, fetch now
+    const timeSinceLastFetch = Date.now() - lastBackgroundFetch
+    if (timeSinceLastFetch >= BACKGROUND_REFRESH_INTERVAL) {
+      triggerBackgroundFetch()
+    }
+
+    // Set up interval for every 15 minutes
+    backgroundFetchRef.current = setInterval(triggerBackgroundFetch, BACKGROUND_REFRESH_INTERVAL)
+
+    return () => {
+      if (backgroundFetchRef.current) {
+        clearInterval(backgroundFetchRef.current)
+      }
+    }
+  }, [enableBackgroundFetch, fetchNewArticles])
 
   // Format countdown display - use useCallback to ensure stability
   const formatCountdown = useCallback((seconds: number) => {
