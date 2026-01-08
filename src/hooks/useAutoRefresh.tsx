@@ -40,10 +40,10 @@ export const useAutoRefresh = ({
   const [nextRefresh, setNextRefresh] = useState(refreshInterval)
   const [shownArticleIds, setShownArticleIds] = useState<Set<string>>(new Set())
   const [hasMore, setHasMore] = useState(true)
-  const [lastBackgroundFetch, setLastBackgroundFetch] = useState<number>(Date.now())
   
   const scrollListenerRef = useRef<() => void>()
-  const backgroundFetchRef = useRef<NodeJS.Timeout | null>(null)
+  const backgroundFetchRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const fetchNewArticlesRef = useRef<() => Promise<void>>()
 
   // Load shown article IDs from localStorage
   useEffect(() => {
@@ -195,7 +195,12 @@ export const useAutoRefresh = ({
     } finally {
       setLoading(false)
     }
-  }, [userId, latestTimestamp, isAtTop, loading, onNewArticles, onRefreshComplete])
+  }, [userId, latestTimestamp, isAtTop, loading, onNewArticles, onRefreshComplete, filterNewArticles, markArticlesAsShown])
+
+  // Keep ref updated for background fetch to avoid circular deps
+  useEffect(() => {
+    fetchNewArticlesRef.current = fetchNewArticles
+  }, [fetchNewArticles])
 
   // Auto-refresh countdown timer with proper restart handling
   useEffect(() => {
@@ -243,19 +248,12 @@ export const useAutoRefresh = ({
         }
         
         console.log('✅ Background fetch completed:', data?.total_articles || 0, 'articles')
-        setLastBackgroundFetch(Date.now())
         
-        // Trigger a local refresh to show new articles
-        fetchNewArticles()
+        // Trigger a local refresh to show new articles using ref
+        fetchNewArticlesRef.current?.()
       } catch (err) {
         console.error('Background fetch failed:', err)
       }
-    }
-
-    // Initial check - if last fetch was more than 15 min ago, fetch now
-    const timeSinceLastFetch = Date.now() - lastBackgroundFetch
-    if (timeSinceLastFetch >= BACKGROUND_REFRESH_INTERVAL) {
-      triggerBackgroundFetch()
     }
 
     // Set up interval for every 15 minutes
@@ -266,7 +264,7 @@ export const useAutoRefresh = ({
         clearInterval(backgroundFetchRef.current)
       }
     }
-  }, [enableBackgroundFetch, fetchNewArticles])
+  }, [enableBackgroundFetch])
 
   // Format countdown display - use useCallback to ensure stability
   const formatCountdown = useCallback((seconds: number) => {
